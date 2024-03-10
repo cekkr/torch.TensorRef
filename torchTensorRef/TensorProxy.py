@@ -145,7 +145,7 @@ class TensorProxy:
         return self.target
 
     def toCPU(self):
-        if self.target.is_cuda:
+        if not self.target.is_cpu:
             self.target = self.target.to("cpu")
 
         return self.target
