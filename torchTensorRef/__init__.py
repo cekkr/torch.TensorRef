@@ -26,7 +26,7 @@ class TorchWrapper:
 ### Analyze
 ###
 
-
+'''
 def analyzeVar(var, name):
     if isinstance(var, (int, float, str)):
         return var
@@ -43,7 +43,7 @@ def analyzeVar(var, name):
     #    return var
 
     return var
-
+'''
 
 ###
 ### Class
@@ -94,7 +94,7 @@ def analyzeClass(var):
 
 cycledObjs = []
 
-
+'''
 def cycleObj(obj, name):
     vars = []
 
@@ -128,6 +128,7 @@ def cycleObj(obj, name):
                 setattr(obj, var, val)
 
     return obj
+'''
 
 class TorchLazyWrapper:
     def __init__(self, target):
