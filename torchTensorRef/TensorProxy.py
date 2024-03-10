@@ -7,22 +7,28 @@ class ProxyInfo:
 
 
 class TensorProxy:
-
+    """
     def __init__(self, *args, **kwargs):
         # Initialize the target object, passing all arguments
         target = Tensor(*args, **kwargs)
         setattr(self, "target", target)
 
         setattr(self, "proxyInfo", ProxyInfo())
+    """
+
+    def __init__(self, target, tensorsManager):
+        setattr(self, "target", target)
+        setattr(self, "proxyInfo", ProxyInfo())
+        self.proxyInfo.tensorsManager = tensorsManager
 
     def __add__(self, other):
         self.toGPU()
         res = None
         if isinstance(other, (Tensor)):
-            res = TensorProxy(self.target + other, self.proxyInfo.device)
+            res = TensorProxy(self.target + other, self.proxyInfo.tensorsManager)
         elif isinstance(other, TensorProxy):
             other.toGPU()
-            res = TensorProxy(self.target + other.target, self.proxyInfo.device)
+            res = TensorProxy(self.target + other.target, self.proxyInfo.tensorsManager)
             other.toCPU()
         else:
             raise TypeError("Unsupported type for addition")
@@ -34,10 +40,10 @@ class TensorProxy:
         self.toGPU()
         res = None
         if isinstance(other, (Tensor)):
-            res = TensorProxy(self.target - other, self.proxyInfo.device)
+            res = TensorProxy(self.target - other, self.proxyInfo.tensorsManager)
         elif isinstance(other, TensorProxy):
             other.toGPU()
-            res = TensorProxy(self.target - other.target, self.proxyInfo.device)
+            res = TensorProxy(self.target - other.target, self.proxyInfo.tensorsManager)
             other.toCPU()
         else:
             raise TypeError("Unsupported type for addition")
@@ -49,10 +55,10 @@ class TensorProxy:
         self.toGPU()
         res = None
         if isinstance(other, (Tensor)):
-            res = TensorProxy(self.target * other, self.proxyInfo.devicee)
+            res = TensorProxy(self.target * other, self.proxyInfo.tensorsManager)
         elif isinstance(other, TensorProxy):
             other.toGPU()
-            res = TensorProxy(self.target * other.target, self.proxyInfo.device)
+            res = TensorProxy(self.target * other.target, self.proxyInfo.tensorsManager)
             other.toCPU()
         else:
             raise TypeError("Unsupported type for addition")
@@ -121,7 +127,7 @@ class TensorProxy:
                     if name == "cpu":
                         self.target = result
                     else:
-                        result = TensorProxy(result, self.proxyInfo.device)
+                        result = TensorProxy(result, self.proxyInfo.tensorsManager)
                         result.toCPU()
 
                 return result
@@ -132,9 +138,9 @@ class TensorProxy:
 
     def toGPU(self):
         if self.target.is_cpu:
-            dev = self.proxyInfo.device
+            dev = self.proxyInfo.tensorsManager.device
             if dev is not None and dev is not "cpu":
-                self.target = self.target.to(self.gpuDevice)
+                self.target = self.target.to(dev)
 
         return self.target
 

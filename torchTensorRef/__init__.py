@@ -2,8 +2,12 @@ import inspect
 import types
 
 import torch
+from torch import Tensor as TorchTensor
 
 from .TensorProxy import TensorProxy
+from .TensorsManager import TensorsManager
+
+tensorsManager = TensorsManager()
 
 
 class TorchWrapper:
@@ -23,19 +27,17 @@ class TorchWrapper:
 ###
 
 
-def analyzeVar(var, depth=0):
+def analyzeVar(var, name):
     if isinstance(var, (int, float, str)):
         return var
-    if isinstance(var, types.FunctionType):
-        signature = inspect.signature(var)
-        parameters = signature.parameters
-        return_type = signature.return_annotation
-        return var
+    if isinstance(
+        var, (types.FunctionType, types.BuiltinFunctionType, types.BuiltinMethodType)
+    ):
+        return method_wrapper(var)
     elif isinstance(var, type):  # Is class
-        return analyzeClass(var)  # TorchWrapper(var)
+        return analyzeClass(var, name)  # TorchWrapper(var)
     elif isinstance(var, object):
-        if depth < 3:
-            return cycleObj(var, depth + 1)
+        return cycleObj(var, name)
 
     # if callable(var):
     #    return var
@@ -50,9 +52,13 @@ def analyzeVar(var, depth=0):
 
 def method_wrapper(func):
     def wrapper(*args, **kwargs):
-        print(f"Before calling {func.__name__}")
+        # print(f"Before calling {func.__name__}")
         result = func(*args, **kwargs)
-        print(f"After calling {func.__name__}")
+        # print(f"After calling {func.__name__}")
+
+        if isinstance(result, TorchTensor):
+            return TensorProxy(result, tensorsManager)
+
         return result
 
     return wrapper
@@ -65,7 +71,7 @@ def class_wrapper(cls):
     return cls
 
 
-def analyzeClass(var):
+def analyzeClass(var, name):
     methods = [
         member
         for member in dir(var)
@@ -89,21 +95,22 @@ def analyzeClass(var):
 cycledObjs = []
 
 
-def cycleObj(obj, depth=0):
-    vars = dir(obj)
+def cycleObj(obj, name):
+    vars = []  # dir(obj)
+
+    if name == "torch":
+        vars = ["rand"]
 
     for var in vars:
-        try:
-            if not var.startswith("_"):
-                val = getattr(obj, var)
-                if val not in cycledObjs:
-                    cycledObjs.append(val)
-                    val = analyzeVar(val, depth)
-                    setattr(obj, var, val)
-        except:
-            null = None
+        if not var.startswith("_"):
+            val = getattr(obj, var)
+            if True or val not in cycledObjs:
+                cycledObjs.append(val)
+                val = analyzeVar(val, name + "." + var)
+                setattr(obj, var, val)
 
     return obj
 
 
-torch = cycleObj(torch)
+torch = cycleObj(torch, "torch")
+torch.Tensor = TensorProxy
