@@ -1,3 +1,6 @@
+import inspect
+import types
+
 import torch
 
 
@@ -13,18 +16,26 @@ class TorchWrapper:
         return self.target(*args, **kwargs)
 
 
-"""
-global_vars = [] #list(globals().keys())
+def analyzeVar(var):
+    if isinstance(var, types.FunctionType):
+        signature = inspect.signature(var)
+        parameters = signature.parameters
+        return_type = signature.return_annotation
+        return var
 
-for var in global_vars:
-    val = globals().get(var)
-    if isinstance(val, object):
-        globals()[var] = TorchWrapper(val)
-"""
+    if callable(var):
+        return var
 
-global_vars = list(torch.keys())
+    return var
 
-for var in global_vars:
-    val = torch.get(var)
-    if isinstance(val, object):
-        torch[var] = TorchWrapper(val)
+
+def cycleObj(obj):
+    vars = list(obj.keys())
+
+    for var in vars:
+        val = torch.get(var)
+        if isinstance(val, object):
+            torch[var] = TorchWrapper(val)
+
+
+cycleObj(torch)
