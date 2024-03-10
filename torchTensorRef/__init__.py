@@ -71,7 +71,7 @@ def class_wrapper(cls):
     return cls
 
 
-def analyzeClass(var, name):
+def analyzeClass(var):
     methods = [
         member
         for member in dir(var)
@@ -96,10 +96,28 @@ cycledObjs = []
 
 
 def cycleObj(obj, name):
-    vars = []  # dir(obj)
+    vars = []
 
     if name == "torch":
-        vars = ["rand"]
+        vars = [
+            # Submodules
+            "nn",
+            # Functions
+            "rand",
+            "empty",
+            "randn",
+            "randint",
+            "randperm",
+            "zeros",
+            "ones",
+            "full",
+            "eye",
+            "linspace",
+            "logspace",
+        ]
+
+    if name.startswith("torch.nn"):
+        vars = dir(obj)
 
     for var in vars:
         if not var.startswith("_"):
@@ -111,6 +129,26 @@ def cycleObj(obj, name):
 
     return obj
 
+class TorchLazyWrapper:
+    def __init__(self, target):
+        setattr(self, "__target", target)
 
-torch = cycleObj(torch, "torch")
-torch.Tensor = TensorProxy
+    def __getattr__(self, name):
+        if name == '__target' or name == '_TorchLazyWrapper__target':
+            return super().__getattribute__('__target')
+
+        attr = getattr(self.__target, name)
+
+        if isinstance(attr, (int, float, str)):
+            return attr
+        elif isinstance(attr, type):  # Is class
+            return analyzeClass(attr)  # TorchWrapper(var)
+        elif isinstance(
+                attr, (types.FunctionType, types.BuiltinFunctionType, types.BuiltinMethodType, types.MethodType)
+        ) or callable(attr):
+            return method_wrapper(attr)
+        elif isinstance(attr, object):
+            return TorchLazyWrapper(attr)
+
+torch = TorchLazyWrapper(torch)
+torch.__target.Tensor = TensorProxy

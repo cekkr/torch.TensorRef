@@ -81,10 +81,9 @@ class TensorProxy:
                     return self
 
         # Delegate attribute access to the target object
-        attr = getattr(super(), name)
+        attr = getattr(self.target, name)
 
         if name == "to":
-
             def ignore(*args, **kwargs):
                 dev = args[0]
                 if isinstance(dev, str):
