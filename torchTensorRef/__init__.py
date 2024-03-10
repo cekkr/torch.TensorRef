@@ -23,9 +23,13 @@ def analyzeVar(var):
         parameters = signature.parameters
         return_type = signature.return_annotation
         return var
+    elif isinstance(var, type):  # Is class
+        return TorchWrapper(var)
+    elif isinstance(var, object):
+        return cycleObj(var)
 
-    if callable(var):
-        return var
+    # if callable(var):
+    #    return var
 
     return var
 
@@ -34,9 +38,13 @@ def cycleObj(obj):
     vars = list(obj.keys())
 
     for var in vars:
-        val = torch.get(var)
-        if isinstance(val, object):
-            torch[var] = TorchWrapper(val)
+        val = obj.get(var)
+        if isinstance(val, type):  # Is class
+            obj[var] = TorchWrapper(val)
+        else:
+            obj[var] = cycleObj(val)
+
+    return obj
 
 
-cycleObj(torch)
+torch = analyzeVar(torch)
