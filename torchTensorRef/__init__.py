@@ -2,6 +2,7 @@ import inspect
 import types
 
 import torch
+from TensorProxy import TensorProxy
 
 
 class TorchWrapper:
