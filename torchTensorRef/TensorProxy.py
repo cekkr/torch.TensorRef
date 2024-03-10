@@ -1,18 +1,28 @@
-class Tensor:
+from torch import Tensor
+
+
+class ProxyInfo:
+    def __init__(self):
+        self.device = "cpu"
+
+
+class TensorProxy:
 
     def __init__(self, *args, **kwargs):
         # Initialize the target object, passing all arguments
-        target = TensorBase(*args, **kwargs)
+        target = Tensor(*args, **kwargs)
         setattr(self, "target", target)
+
+        setattr(self, "proxyInfo", ProxyInfo())
 
     def __add__(self, other):
         self.toGPU()
         res = None
-        if isinstance(other, (TensorBase)):
-            res = Tensor(self.target + other, self.gpuDevice)
-        elif isinstance(other, Tensor):
+        if isinstance(other, (Tensor)):
+            res = TensorProxy(self.target + other, self.proxyInfo.device)
+        elif isinstance(other, TensorProxy):
             other.toGPU()
-            res = Tensor(self.target + other.target, self.gpuDevice)
+            res = TensorProxy(self.target + other.target, self.proxyInfo.device)
             other.toCPU()
         else:
             raise TypeError("Unsupported type for addition")
@@ -23,11 +33,11 @@ class Tensor:
     def __sub__(self, other):
         self.toGPU()
         res = None
-        if isinstance(other, (TensorBase)):
-            res = Tensor(self.target - other, self.gpuDevice)
-        elif isinstance(other, Tensor):
+        if isinstance(other, (Tensor)):
+            res = TensorProxy(self.target - other, self.proxyInfo.device)
+        elif isinstance(other, TensorProxy):
             other.toGPU()
-            res = Tensor(self.target - other.target, self.gpuDevice)
+            res = TensorProxy(self.target - other.target, self.proxyInfo.device)
             other.toCPU()
         else:
             raise TypeError("Unsupported type for addition")
@@ -38,11 +48,11 @@ class Tensor:
     def __mul__(self, other):
         self.toGPU()
         res = None
-        if isinstance(other, (TensorBase)):
-            res = Tensor(self.target * other, self.gpuDevice)
-        elif isinstance(other, Tensor):
+        if isinstance(other, (Tensor)):
+            res = TensorProxy(self.target * other, self.proxyInfo.devicee)
+        elif isinstance(other, TensorProxy):
             other.toGPU()
-            res = Tensor(self.target * other.target, self.gpuDevice)
+            res = TensorProxy(self.target * other.target, self.proxyInfo.device)
             other.toCPU()
         else:
             raise TypeError("Unsupported type for addition")
@@ -51,13 +61,13 @@ class Tensor:
         return res
 
     def __setattr__(self, key, value):
-        if key == "gpuDevice" or key == "target":
+        if key == "proxyInfo" or key == "target":
             super().__setattr__(key, value)
         else:
             setattr(self.target, key, value)
 
     def __getattr__(self, name):
-        if name == "target" or name == "gpuDevice":
+        if name == "target" or name == "proxyInfo":
             try:
                 return super().__getattribute__(name)
             except:
@@ -72,7 +82,7 @@ class Tensor:
             def ignore(*args, **kwargs):
                 dev = args[0]
                 if isinstance(dev, str):
-                    setattr(self, "gpuDevice", dev)
+                    self.proxyInfo.device = dev
                     return self
                 else:
                     return attr(*args, **kwargs)
@@ -89,13 +99,13 @@ class Tensor:
                 proxies = []
                 for a in range(0, len(args)):
                     value = args[a]
-                    if isinstance(value, Tensor):
+                    if isinstance(value, TensorProxy):
                         proxies.append(value)
                         args[a] = value.toGPU()
 
                 for key, value in kwargs.items():
                     print(f"{key}: {value}")
-                    if isinstance(value, Tensor):
+                    if isinstance(value, TensorProxy):
                         proxies.append(value)
                         kwargs[key] = value.toGPU()
 
@@ -107,11 +117,11 @@ class Tensor:
                 for value in proxies:
                     value.toCPU()
 
-                if isinstance(result, TensorBase):
+                if isinstance(result, Tensor):
                     if name == "cpu":
                         self.target = result
                     else:
-                        result = Tensor(result, self.gpuDevice)
+                        result = TensorProxy(result, self.proxyInfo.device)
                         result.toCPU()
 
                 return result
@@ -122,7 +132,7 @@ class Tensor:
 
     def toGPU(self):
         if self.target.is_cpu:
-            dev = getattr(self, "gpuDevice")
+            dev = self.proxyInfo.device
             if dev is not None and dev is not "cpu":
                 self.target = self.target.to(self.gpuDevice)
 

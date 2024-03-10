@@ -2,7 +2,8 @@ import inspect
 import types
 
 import torch
-from TensorProxy import TensorProxy
+
+from .TensorProxy import TensorProxy
 
 
 class TorchWrapper:
@@ -17,16 +18,24 @@ class TorchWrapper:
         return self.target(*args, **kwargs)
 
 
-def analyzeVar(var):
+###
+### Analyze
+###
+
+
+def analyzeVar(var, depth=0):
+    if isinstance(var, (int, float, str)):
+        return var
     if isinstance(var, types.FunctionType):
         signature = inspect.signature(var)
         parameters = signature.parameters
         return_type = signature.return_annotation
         return var
     elif isinstance(var, type):  # Is class
-        return TorchWrapper(var)
+        return analyzeClass(var)  # TorchWrapper(var)
     elif isinstance(var, object):
-        return cycleObj(var)
+        if depth < 3:
+            return cycleObj(var, depth + 1)
 
     # if callable(var):
     #    return var
@@ -34,17 +43,67 @@ def analyzeVar(var):
     return var
 
 
-def cycleObj(obj):
-    vars = list(obj.keys())
+###
+### Class
+###
+
+
+def method_wrapper(func):
+    def wrapper(*args, **kwargs):
+        print(f"Before calling {func.__name__}")
+        result = func(*args, **kwargs)
+        print(f"After calling {func.__name__}")
+        return result
+
+    return wrapper
+
+
+def class_wrapper(cls):
+    for name, method in cls.__dict__.items():
+        if callable(method):
+            setattr(cls, name, method_wrapper(method))
+    return cls
+
+
+def analyzeClass(var):
+    methods = [
+        member
+        for member in dir(var)
+        if callable(getattr(var, member)) and not member.startswith("__")
+    ]
+
+    print("Methods of MyClass:")
+    for method in methods:
+        print(method)
+
+    # If you want to include methods from base classes as well, use inspect.getmembers() with a filter
+    all_methods = inspect.getmembers(var, predicate=inspect.isfunction)
+
+    print("\nAll methods of MyClass (including base classes):")
+    for method_name, method in all_methods:
+        print(method_name)
+
+    return var
+
+
+cycledObjs = []
+
+
+def cycleObj(obj, depth=0):
+    vars = dir(obj)
 
     for var in vars:
-        val = obj.get(var)
-        if isinstance(val, type):  # Is class
-            obj[var] = TorchWrapper(val)
-        else:
-            obj[var] = cycleObj(val)
+        try:
+            if not var.startswith("_"):
+                val = getattr(obj, var)
+                if val not in cycledObjs:
+                    cycledObjs.append(val)
+                    val = analyzeVar(val, depth)
+                    setattr(obj, var, val)
+        except:
+            null = None
 
     return obj
 
 
-torch = analyzeVar(torch)
+torch = cycleObj(torch)
