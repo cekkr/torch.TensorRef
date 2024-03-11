@@ -125,7 +125,7 @@ def noisy_importer(
         except:
             ignore = True
 
-    if (name.startswith("torch") or (inside != None and inside.startswith('torch'))) and inside != 'torch._tensor':
+    if (name.startswith("torch") and (inside != None and inside.startswith('torch'))) and inside != 'torch._tensor':
         res = defaultImport(name, locals, globals, fromlist, level)
         if name != 'builtins':
             wrapModule(res)
