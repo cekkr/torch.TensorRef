@@ -171,8 +171,10 @@ for m in magics:
 
             if magicRef is None:
                 def magicWrapper(*args, **kwargs):
-                    return magic(*args, **kwargs)
-                setattr(TensorRef, m, magicWrapper)
+                    self, *args = args
+                    self = self.target
+                    return magic(self, *args, **kwargs)
+                setattr(TensorRef.__dict__, m, magicWrapper)
 
         except Exception as err:
             ignore = True
