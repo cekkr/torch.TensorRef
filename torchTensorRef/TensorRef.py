@@ -50,7 +50,7 @@ class TensorRef:
             # If the original attribute is callable, we return a new wrapper function
             def wrapper(*args, **kwargs):
                 # Here you can analyze the arguments before calling the original function
-                print(f"Calling {name}")
+                #print(f"Calling {name}")
 
                 # look for tensors on CPU
                 proxies = []
