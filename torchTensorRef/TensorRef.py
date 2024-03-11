@@ -7,66 +7,11 @@ class ProxyInfo:
 
 
 class TensorRef:
-    """
-    def __init__(self, *args, **kwargs):
-        # Initialize the target object, passing all arguments
-        target = Tensor(*args, **kwargs)
-        setattr(self, "target", target)
-
-        setattr(self, "proxyInfo", ProxyInfo())
-    """
-
+    
     def __init__(self, target, tensorsManager):
         setattr(self, "target", target)
         setattr(self, "proxyInfo", ProxyInfo())
         self.proxyInfo.tensorsManager = tensorsManager
-
-    """
-    def __add__(self, other):
-        self.toGPU()
-        res = None
-        if isinstance(other, (Tensor)):
-            res = TensorRef(self.target + other, self.proxyInfo.tensorsManager)
-        elif isinstance(other, TensorRef):
-            other.toGPU()
-            res = TensorRef(self.target + other.target, self.proxyInfo.tensorsManager)
-            other.toCPU()
-        else:
-            raise TypeError("Unsupported type for addition")
-
-        self.toCPU()
-        return res
-
-    def __sub__(self, other):
-        self.toGPU()
-        res = None
-        if isinstance(other, (Tensor)):
-            res = TensorRef(self.target - other, self.proxyInfo.tensorsManager)
-        elif isinstance(other, TensorRef):
-            other.toGPU()
-            res = TensorRef(self.target - other.target, self.proxyInfo.tensorsManager)
-            other.toCPU()
-        else:
-            raise TypeError("Unsupported type for addition")
-
-        self.toCPU()
-        return res
-
-    def __mul__(self, other):
-        self.toGPU()
-        res = None
-        if isinstance(other, (Tensor)):
-            res = TensorRef(self.target * other, self.proxyInfo.tensorsManager)
-        elif isinstance(other, TensorRef):
-            other.toGPU()
-            res = TensorRef(self.target * other.target, self.proxyInfo.tensorsManager)
-            other.toCPU()
-        else:
-            raise TypeError("Unsupported type for addition")
-
-        self.toCPU()
-        return res
-    """
 
     def __setattr__(self, key, value):
         if key == "proxyInfo" or key == "target":
@@ -179,7 +124,7 @@ def applyMagicMethod(op):
                 res = TensorRef(
                     res, self.proxyInfo.tensorsManager
                 )
-                
+
                 res.toCPU()
 
                 self.toCPU()

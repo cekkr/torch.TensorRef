@@ -10,7 +10,6 @@ from .TensorsManager import TensorsManager
 
 tensorsManager = TensorsManager()
 
-
 class TorchWrapper:
     def __init__(self, target):
         self.target = target
@@ -108,13 +107,32 @@ class TorchLazyWrapper:
     def __init__(self, target):
         setattr(self, "__target", target)
 
+        '''
+        try:
+            vars = dir(target)
+            for v in vars:
+                attr = getattr(target, v)
+
+                markedLazy = False
+                try:
+                    markedLazy = getattr(attr, '__lazyWrapper')
+                except:
+                    ignore = True
+
+                if isinstance(attr, (types.ModuleType)) and not markedLazy:
+                    setattr(attr, '__lazyWrapper', True)
+                    setattr(target, v, TorchLazyWrapper(attr))
+        except:
+            ignore = True
+        '''
+
     def __getattr__(self, name):
         if name == "__target" or name == "_TorchLazyWrapper__target":
             return super().__getattribute__("__target")
 
         attr = getattr(self.__target, name)
 
-        if isinstance(attr, (int, float, str)):
+        if isinstance(attr, (int, float, str, TorchLazyWrapper)):
             return attr
         elif isinstance(attr, type):  # Is class
             return analyzeClass(attr)
