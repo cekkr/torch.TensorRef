@@ -34,7 +34,10 @@ class TensorRef:
         if name == "to":
 
             def ignore(*args, **kwargs):
-                dev = args[0]
+                dev = None
+                if len(args) > 0:
+                    dev = args[0]
+
                 if isinstance(dev, str):
                     self.proxyInfo.device = dev
                     return self
@@ -98,9 +101,16 @@ class TensorRef:
 
         return self.target
 
+    ### Iterate
+
+    # The __iter__ method returns the iterator object itself
+    def __iter__(self):
+        return self.target.__iter__()
+
+
 
 # Create math operation magic functions
-ops = ["add", "sub", "truediv", "floordiv", "mul", "mod", "divmod", "pow"]
+ops = ["add", "sub", "truediv", "floordiv", "mul", "mod", "divmod", "pow", "and", "or", "lshift", "rshift", "xor"]
 
 
 def applyMagicMethod(op):
@@ -113,14 +123,18 @@ def applyMagicMethod(op):
             def mathWrapper(self, other):
                 self.toGPU()
                 res = None
+                withBaseTensor = False
                 if isinstance(other, Tensor):
-                    res = method(self.target, other)
-                elif isinstance(other, TensorRef):
+                    #res = method(self.target, other)
+                    other = TensorRef(other, self.proxyInfo.tensorsManager)
+                    withBaseTensor = True
+
+                if isinstance(other, TensorRef):
                     other.toGPU()
                     res = method(self.target, other.target)
                     other.toCPU()
                 else:
-                    raise TypeError("Unsupported type for addition")
+                    raise TypeError("Unsupported type for math operation")
 
                 res = TensorRef(
                     res, self.proxyInfo.tensorsManager
@@ -128,7 +142,11 @@ def applyMagicMethod(op):
 
                 res.toCPU()
 
-                self.toCPU()
+                cpu = self.toCPU()
+
+                if withBaseTensor:
+                    return self.target
+
                 return res
 
             setattr(TensorRef, op, mathWrapper)
