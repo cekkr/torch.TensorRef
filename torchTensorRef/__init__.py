@@ -107,6 +107,11 @@ def noisy_importer(
     except:
         ignore = True
 
+    try:
+        originalImport = locals['__import__']
+    except:
+        ignore = True
+
     if isinstance(originalImport, types.BuiltinFunctionType):
         def wrapImport(
                 name, locals={}, globals={}, fromlist=[], level=0, forceLoad=False
@@ -127,13 +132,13 @@ def noisy_importer(
 
     if (name.startswith("torch") and (inside != None and inside.startswith('torch'))) and inside != 'torch._tensor':
         res = defaultImport(name, locals, globals, fromlist, level)
-        if name != 'builtins':
+        if name != 'builtins': # still necessary?
             wrapModule(res)
     else:
         try:
             res = defaultImport(name, locals, globals, fromlist, level)
         except Exception as err:
-            raise ImportError()
+            raise err
 
 
     '''
@@ -177,6 +182,11 @@ def method_wrapper(func):
             return result
 
     # wrapper.__doc__ = "basic"
+
+    try:
+        wrapModule(func)
+    except Exception as err:
+        ignore = True
 
     return wrapper
 
