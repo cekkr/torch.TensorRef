@@ -55,6 +55,7 @@ def noisy_importer(
 
     res = None
 
+    '''
     try:
         res = importCache[name]
         if res is not None and not forceLoad:
@@ -62,41 +63,66 @@ def noisy_importer(
             return res
     except:
         ignore = True
+    '''
 
-    if name.startswith("torch") and not forceLoad:
+    inside = None
+    try:
+        inside = defaultImport.__dict__['inside']
+    except:
+        ignore = True
 
-        bi = None
+    if inside is None:
         try:
-            bi = locals["builtins"]
+            inside = locals['__name__']
         except Exception as err:
             ignore = True
 
-        if bi is None:
-            bi = __import__("builtins", locals, globals, fromlist, 0)
-            locals["builtins"] = bi
+    ### Obtain builtins import to hook
+    bi = None
+    try:
+        bi = locals["__builtins__"]
+    except Exception as err:
+        ignore = True
 
-        origImport = bi.__import__
+    if bi is None:
+        bi = defaultImport("builtins", locals, globals, fromlist, 0)
+        locals["__builtins__"] = bi
 
-        if isinstance(origImport, types.BuiltinFunctionType):
+    if bi is not None:
+        originalImport = bi['__import__']
 
+        if isinstance(originalImport, types.BuiltinFunctionType):
             def wrapImport(
-                name, locals={}, globals={}, fromlist=[], level=0, forceLoad=False
+                    name, locals={}, globals={}, fromlist=[], level=0, forceLoad=False
             ):
                 return noisy_importer(
-                    name, locals, globals, fromlist, level, forceLoad, origImport
+                    name, locals, globals, fromlist, level, forceLoad, originalImport
                 )
 
+            wrapImport.__dict__['inside'] = name
+            wrapImport.__dict__['original'] = originalImport
             bi.__import__ = wrapImport
+            defaultImport = originalImport
+        else:
+            try:
+                defaultImport = originalImport.__dict__['original']
+            except:
+                ignore = True
 
+    if (name.startswith("torch") or (inside != None and inside.startswith('torch'))) and inside != 'torch._tensor':
         res = defaultImport(name, locals, globals, fromlist, level)
-        wrapModule(res)
+        if name != 'builtins':
+            wrapModule(res)
     else:
         res = defaultImport(name, locals, globals, fromlist, level)
 
+
+    '''
     if res is None:
         print("damn, import is none")
     else:
         importCache[name] = res
+    '''
 
     return res
 
@@ -140,6 +166,7 @@ def method_wrapper(func):
 ### torch
 ###
 
+import torch
 from torch import Tensor as TorchTensor
 
 from .TensorRef import TensorRef
