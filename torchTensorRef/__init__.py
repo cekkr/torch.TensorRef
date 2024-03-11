@@ -19,7 +19,6 @@ def is_builtin_type(obj):
 _dtype = str
 class TorchLazyWrapper:
     def __init__(self, target, name=None, locals=None, globals=None, fromlist=None, level=None):
-        #setattr(self, "__target", target)
         super().__setattr__('__target', target)
 
         super().__setattr__('__name', name)
@@ -29,12 +28,25 @@ class TorchLazyWrapper:
         super().__setattr__('__level', level)
 
     def __check(self):
-        if self.target == False:
-            return True # todo: import
+        if self.__target == False:
+            target = noisy_importer(
+                super().__getattribute__('__name'),
+                super().__getattribute__('__locals'),
+                super().__getattribute__('__globals'),
+                super().__getattribute__('__fromlist'),
+                super().__getattribute__('__level'),
+                True
+            )
+            super().__setattr__('__target', target)
 
     def __getattr__(self, name):
         if name == "__target" or name == "_TorchLazyWrapper__target":
             return super().__getattribute__("__target")
+
+        if name == '__check':
+            return super().__getattribute__('__check')
+
+        self.__check()
 
         attr = None
         try:
@@ -99,7 +111,7 @@ TorchTensor = None
 
 old_import = __import__
 
-def noisy_importer(name, locals={}, globals={}, fromlist=[], level=0):
+def noisy_importer(name, locals={}, globals={}, fromlist=[], level=0, forceLoad=False):
     print(f'name: {name!r}')
     print(f'fromlist: {fromlist}')
     print(f'level: {level}')
@@ -107,7 +119,9 @@ def noisy_importer(name, locals={}, globals={}, fromlist=[], level=0):
     if name == 'torch.Tensor':
         TorchTensor = name
 
-    if name.startswith('torch'):
+    res = None
+
+    if name.startswith('torch') and not forceLoad:
         bi = None
         try:
             bi = locals['builtins']
@@ -120,7 +134,7 @@ def noisy_importer(name, locals={}, globals={}, fromlist=[], level=0):
 
         bi.__import__ = noisy_importer
 
-        if not name.startswith('torch._C') and isinstance(res, types.ModuleType):
+        if not name.startswith('torch._C'): # and isinstance(res, types.ModuleType)
             res = TorchLazyWrapper(False, name, locals, globals, fromlist, level)
         else:
             def whoCares(*args, **kwargs):
@@ -129,6 +143,9 @@ def noisy_importer(name, locals={}, globals={}, fromlist=[], level=0):
             res.__dict__['_add_docstr'] = whoCares
     else:
         res = old_import(name, locals, globals, fromlist, level)
+
+    if res is None:
+        print("damn, import is none")
 
     return res
 
