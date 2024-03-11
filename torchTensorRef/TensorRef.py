@@ -174,7 +174,7 @@ for m in magics:
                     self, *args = args
                     self = self.target
                     return magic(self, *args, **kwargs)
-                setattr(TensorRef.__dict__, m, magicWrapper)
+                setattr(TensorRef, m, magicWrapper)
 
         except Exception as err:
             ignore = True
