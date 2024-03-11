@@ -18,9 +18,19 @@ def is_builtin_type(obj):
 
 _dtype = str
 class TorchLazyWrapper:
-    def __init__(self, target):
+    def __init__(self, target, name=None, locals=None, globals=None, fromlist=None, level=None):
         #setattr(self, "__target", target)
         super().__setattr__('__target', target)
+
+        super().__setattr__('__name', name)
+        super().__setattr__('__locals', locals)
+        super().__setattr__('__globals', globals)
+        super().__setattr__('__fromlist', fromlist)
+        super().__setattr__('__level', level)
+
+    def __check(self):
+        if self.target == False:
+            return True # todo: import
 
     def __getattr__(self, name):
         if name == "__target" or name == "_TorchLazyWrapper__target":
@@ -94,8 +104,6 @@ def noisy_importer(name, locals={}, globals={}, fromlist=[], level=0):
     print(f'fromlist: {fromlist}')
     print(f'level: {level}')
 
-    res = old_import(name, locals, globals, fromlist, level)
-
     if name == 'torch.Tensor':
         TorchTensor = name
 
@@ -112,12 +120,15 @@ def noisy_importer(name, locals={}, globals={}, fromlist=[], level=0):
 
         bi.__import__ = noisy_importer
 
-        if not name.startswith('torch._C'):
-            res = TorchLazyWrapper(res)
+        if not name.startswith('torch._C') and isinstance(res, types.ModuleType):
+            res = TorchLazyWrapper(False, name, locals, globals, fromlist, level)
         else:
             def whoCares(*args, **kwargs):
                 print("seriously, who cares")
+            res = old_import(name, locals, globals, fromlist, level)
             res.__dict__['_add_docstr'] = whoCares
+    else:
+        res = old_import(name, locals, globals, fromlist, level)
 
     return res
 
@@ -235,8 +246,7 @@ def analyzeClass(var):
 
 #import sys
 #setattr(sys.modules['torch'], 'TensorBase', 'dummy')
-import torch
-from torch import Tensor as TorchTensor
+#from torch import Tensor as TorchTensor
 from .TensorRef import TensorRef
 from .TensorsManager import TensorsManager
 
