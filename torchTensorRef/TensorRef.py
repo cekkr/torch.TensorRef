@@ -1,3 +1,4 @@
+import torch
 from torch import Tensor
 
 
@@ -7,7 +8,7 @@ class ProxyInfo:
 
 
 class TensorRef:
-    
+
     def __init__(self, target, tensorsManager):
         setattr(self, "target", target)
         setattr(self, "proxyInfo", ProxyInfo())

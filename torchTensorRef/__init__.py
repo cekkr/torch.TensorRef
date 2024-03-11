@@ -16,28 +16,75 @@ def is_builtin_type(obj):
     builtin_types = (int, float, str, list, dict, tuple, set, bool, bytes)
     return isinstance(obj, builtin_types) or type(obj) in vars(types).values()
 
+def flatten_tuple_iteratively(t):
+    if t is None:
+        return []
+
+    stack = [iter(t)]
+    while stack:
+        try:
+            item = next(stack[-1])
+            if isinstance(item, (tuple, list)):
+                stack.append(iter(item))
+            else:
+                yield item
+        except StopIteration:
+            stack.pop()
+
+
 _dtype = str
 class TorchLazyWrapper:
-    def __init__(self, target, name=None, locals=None, globals=None, fromlist=None, level=None):
-        super().__setattr__('__target', target)
+    def __init__(self, target, name=None, locals=None, globals=None, fromlist=None, level=None, wrImport=None):
+        if target is not False:
+            self.__check(target)
+        else:
+            super().__setattr__('__target', False)
 
         super().__setattr__('__name', name)
         super().__setattr__('__locals', locals)
         super().__setattr__('__globals', globals)
         super().__setattr__('__fromlist', fromlist)
         super().__setattr__('__level', level)
+        super().__setattr__('__wrImport', wrImport)
 
-    def __check(self):
-        if self.__target == False:
-            target = noisy_importer(
-                super().__getattribute__('__name'),
-                super().__getattribute__('__locals'),
-                super().__getattribute__('__globals'),
-                super().__getattribute__('__fromlist'),
-                super().__getattribute__('__level'),
-                True
-            )
+    def __check(self, target=None):
+        if target is not None:
             super().__setattr__('__target', target)
+
+        if self.__target == False:
+            name = super().__getattribute__('__name')
+
+            target = None
+            if name is False:
+                parent = super().__getattribute__('__locals')
+                myName = parent = super().__getattribute__('__globals')
+                parent.__check()
+                target = getattr(parent, myName)
+            else:
+                wrImport = name = super().__getattribute__('__wrImport')
+                target = wrImport(
+                    name,
+                    super().__getattribute__('__locals'),
+                    super().__getattribute__('__globals'),
+                    super().__getattribute__('__fromlist'),
+                    super().__getattribute__('__level'),
+                    True
+                )
+
+            super().__setattr__('__target', target)
+
+        if target is not None:
+            if isinstance(target, TorchLazyWrapper):
+                target = target.__target
+
+            vars = dir(target)
+            for v in vars:
+                try:
+                    attr = getattr(target, v)
+                    setattr(self, v, attr)
+                except:
+                    ignore = True
+
 
     def __getattr__(self, name):
         if name == "__target" or name == "_TorchLazyWrapper__target":
@@ -46,7 +93,19 @@ class TorchLazyWrapper:
         if name == '__check':
             return super().__getattribute__('__check')
 
-        self.__check()
+        if self.__target is False:
+            fromlist = list(flatten_tuple_iteratively(super().__getattribute__('__fromlist')))
+            if name in fromlist:
+                wrap = super().__getattribute__(name)
+                if wrap is None:
+                    wrap = TorchLazyWrapper(False, False, self, name)
+                    super().__setattr__(name, wrap)
+
+                return wrap
+            else:
+                self.__check()
+        else:
+            self.__check()
 
         attr = None
         try:
@@ -109,19 +168,53 @@ class TorchLazyWrapper:
 TensorRef = None
 TorchTensor = None
 
+def wrapModule(mod):
+    vars = dir(mod)
+    for v in vars:
+        try:
+            attr = mod.__dict__[v]
+            if isinstance(
+                    attr,
+                    (
+                            types.FunctionType,
+                            types.BuiltinFunctionType,
+                            types.BuiltinMethodType,
+                            types.MethodType,
+                    ),
+            ) and callable(attr):
+                mod.__dict__[v] = method_wrapper(attr)
+        except:
+            ignore = True
+
 old_import = __import__
 
-def noisy_importer(name, locals={}, globals={}, fromlist=[], level=0, forceLoad=False):
+importCache = {}
+def noisy_importer(name, locals={}, globals={}, fromlist=[], level=0, forceLoad=False, defaultImport=None):
+    if defaultImport is None:
+        defaultImport = old_import
+
     print(f'name: {name!r}')
     print(f'fromlist: {fromlist}')
     print(f'level: {level}')
+
+    if forceLoad:
+        del sys.modules[name]
 
     if name == 'torch.Tensor':
         TorchTensor = name
 
     res = None
 
+    try:
+        res = importCache[name]
+        if res is not None and not forceLoad:
+            res.__check()
+            return res
+    except:
+        ignore = True
+
     if name.startswith('torch') and not forceLoad:
+
         bi = None
         try:
             bi = locals['builtins']
@@ -132,20 +225,23 @@ def noisy_importer(name, locals={}, globals={}, fromlist=[], level=0, forceLoad=
             bi = __import__('builtins', locals, globals, fromlist, 0)
             locals['builtins'] = bi
 
-        bi.__import__ = noisy_importer
+        origImport = bi.__import__
 
-        if not name.startswith('torch._C'): # and isinstance(res, types.ModuleType)
-            res = TorchLazyWrapper(False, name, locals, globals, fromlist, level)
-        else:
-            def whoCares(*args, **kwargs):
-                print("seriously, who cares")
-            res = old_import(name, locals, globals, fromlist, level)
-            res.__dict__['_add_docstr'] = whoCares
+        if isinstance(origImport, types.BuiltinFunctionType):
+            def wrapImport(name, locals={}, globals={}, fromlist=[], level=0, forceLoad=False):
+                return noisy_importer(name, locals, globals, fromlist, level, forceLoad, origImport)
+
+            bi.__import__ = wrapImport
+
+        res = defaultImport(name, locals, globals, fromlist, level)
+        wrapModule(res)
     else:
-        res = old_import(name, locals, globals, fromlist, level)
+        res = defaultImport(name, locals, globals, fromlist, level)
 
     if res is None:
         print("damn, import is none")
+    else:
+        importCache[name] = res
 
     return res
 
@@ -157,25 +253,25 @@ builtins.__import__ = noisy_importer
 ###
 
 def method_wrapper(func):
-    def wrapper(*args, **kwargs):
+    class wrapper():
+        def __new__(cls, *args, **kwargs):
+            args = list(args)
+            for a in range(0, len(args)):
+                arg = args[a]
+                if TensorRef is not None:
+                    if isinstance(arg, TensorRef):
+                        args[a] = arg.target
+            args = tuple(args)
 
-        args = list(args)
-        for a in range(0, len(args)):
-            arg = args[a]
-            if TensorRef is not None:
-                if isinstance(arg, TensorRef):
-                    args[a] = arg.target
-        args = tuple(args)
+            # print(f"Before calling {func.__name__}")
+            result = func(*args, **kwargs)
+            # print(f"After calling {func.__name__}")
 
-        # print(f"Before calling {func.__name__}")
-        result = func(*args, **kwargs)
-        # print(f"After calling {func.__name__}")
+            if TorchTensor is not None:
+                if isinstance(result, TorchTensor):
+                    return TensorRef(result, tensorsManager)
 
-        if TorchTensor is not None:
-            if isinstance(result, TorchTensor):
-                return TensorRef(result, tensorsManager)
-
-        return result
+            return result
 
     wrapper.__doc__ = "basic"
 
@@ -263,7 +359,7 @@ def analyzeClass(var):
 
 #import sys
 #setattr(sys.modules['torch'], 'TensorBase', 'dummy')
-#from torch import Tensor as TorchTensor
+from torch import Tensor as TorchTensor
 from .TensorRef import TensorRef
 from .TensorsManager import TensorsManager
 
