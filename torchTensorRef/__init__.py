@@ -1,14 +1,146 @@
+###
+###
+###
+
 #import inspect
 import types
 import copy
 
-import torch
-from torch import Tensor as TorchTensor
+###
+###
+###
 
-from .TensorRef import TensorRef
-from .TensorsManager import TensorsManager
+import numpy
 
-tensorsManager = TensorsManager()
+def is_builtin_type(obj):
+    builtin_types = (int, float, str, list, dict, tuple, set, bool, bytes)
+    return isinstance(obj, builtin_types) or type(obj) in vars(types).values()
+
+_dtype = str
+class TorchLazyWrapper:
+    def __init__(self, target):
+        #setattr(self, "__target", target)
+        super().__setattr__('__target', target)
+
+    def __getattr__(self, name):
+        if name == "__target" or name == "_TorchLazyWrapper__target":
+            return super().__getattribute__("__target")
+
+        attr = None
+        try:
+            attr = self.__target.__getattribute__(name)
+        except:
+            return None
+
+        global _dtype
+        if name == 'dtype':
+            _dtype = attr
+
+        if isinstance(attr, (int, float, str, TorchLazyWrapper, _dtype)) or name == '_C':
+            return attr
+        elif isinstance(attr, type):  # Is class
+            return analyzeClass(attr)
+        elif isinstance(
+            attr,
+            (
+                types.FunctionType,
+                types.BuiltinFunctionType,
+                types.BuiltinMethodType,
+                types.MethodType,
+            ),
+        ) or callable(attr):
+            return method_wrapper(attr)
+        elif isinstance(attr, object):
+            return TorchLazyWrapper(attr)
+
+    def __setattr__(self, key, value):
+        self.__target.__setattr__(key, value)
+
+    def __iter__(self, *args, **kwargs):
+        return self.__target.__iter__(*args, **kwargs)
+
+    def __next__(self, *args, **kwargs):
+        return self.__target.__next__(*args, **kwargs)
+
+    def __getitem__(self, key):
+        return self.__target.__getitem__(key)
+
+    def __setitem__(self, key, value):
+        self.__target.__setitem__(key, value)
+
+    def __delitem__(self, key):
+        self.__target.__delitem__(key)
+
+
+
+###
+### Import hook (ugly solutions for lazy people)
+###
+
+TensorRef = None
+TorchTensor = None
+
+old_import = __import__
+
+def noisy_importer(name, locals={}, globals={}, fromlist=[], level=0):
+    print(f'name: {name!r}')
+    print(f'fromlist: {fromlist}')
+    print(f'level: {level}')
+
+    res = old_import(name, locals, globals, fromlist, level)
+
+    if name.startswith('torch._C'):
+        return res
+
+    if name == 'torch.Tensor':
+        TorchTensor = name
+
+    if name.startswith('torch'):
+        bi = None
+        try:
+            bi = locals['builtins']
+        except Exception as err:
+            ignore = True
+
+        if bi is None:
+            bi = __import__('builtins', locals, globals, fromlist, 0)
+            locals['builtins'] = bi
+
+        bi.__import__ = noisy_importer
+
+        res = TorchLazyWrapper(res)
+
+    return res
+
+import builtins
+builtins.__import__ = noisy_importer
+
+###
+### torch wrappers
+###
+
+def method_wrapper(func):
+    def wrapper(*args, **kwargs):
+
+        args = list(args)
+        for a in range(0, len(args)):
+            arg = args[a]
+            if TensorRef is not None:
+                if isinstance(arg, TensorRef):
+                    args[a] = arg.target
+        args = tuple(args)
+
+        # print(f"Before calling {func.__name__}")
+        result = func(*args, **kwargs)
+        # print(f"After calling {func.__name__}")
+
+        if TorchTensor is not None:
+            if isinstance(result, TorchTensor):
+                return TensorRef(result, tensorsManager)
+
+        return result
+
+    return wrapper
 
 class TorchWrapper:
     def __init__(self, target):
@@ -49,29 +181,6 @@ def analyzeVar(var, name):
 ### Class
 ###
 
-
-def method_wrapper(func):
-    def wrapper(*args, **kwargs):
-
-        args = list(args)
-        for a in range(0, len(args)):
-            arg = args[a]
-            if isinstance(arg, TensorRef):
-                args[a] = arg.target
-        args = tuple(args)
-
-        # print(f"Before calling {func.__name__}")
-        result = func(*args, **kwargs)
-        # print(f"After calling {func.__name__}")
-
-        if isinstance(result, TorchTensor):
-            return TensorRef(result, tensorsManager)
-
-        return result
-
-    return wrapper
-
-
 def class_wrapper(cls):
     for name, method in cls.__dict__.items():
         if callable(method):
@@ -103,52 +212,24 @@ def classBoggart_creator(parent_class):
 def analyzeClass(var):
     return classBoggart_creator(var)
 
-class TorchLazyWrapper:
-    def __init__(self, target):
-        setattr(self, "__target", target)
+###
+### torch
+###
 
-        '''
-        try:
-            vars = dir(target)
-            for v in vars:
-                attr = getattr(target, v)
+#import sys
+#setattr(sys.modules['torch'], 'TensorBase', 'dummy')
+from torch import Tensor as TorchTensor
+from .TensorRef import TensorRef
+from .TensorsManager import TensorsManager
 
-                markedLazy = False
-                try:
-                    markedLazy = getattr(attr, '__lazyWrapper')
-                except:
-                    ignore = True
+'''
+import importlib
+import sys
+setattr(sys.modules['torch'], 'TensorBase', 'dummy')
+importlib.reload(torch)
+'''
 
-                if isinstance(attr, (types.ModuleType)) and not markedLazy:
-                    setattr(attr, '__lazyWrapper', True)
-                    setattr(target, v, TorchLazyWrapper(attr))
-        except:
-            ignore = True
-        '''
+tensorsManager = TensorsManager()
 
-    def __getattr__(self, name):
-        if name == "__target" or name == "_TorchLazyWrapper__target":
-            return super().__getattribute__("__target")
-
-        attr = getattr(self.__target, name)
-
-        if isinstance(attr, (int, float, str, TorchLazyWrapper)):
-            return attr
-        elif isinstance(attr, type):  # Is class
-            return analyzeClass(attr)
-        elif isinstance(
-            attr,
-            (
-                types.FunctionType,
-                types.BuiltinFunctionType,
-                types.BuiltinMethodType,
-                types.MethodType,
-            ),
-        ) or callable(attr):
-            return method_wrapper(attr)
-        elif isinstance(attr, object):
-            return TorchLazyWrapper(attr)
-
-
-torch = TorchLazyWrapper(torch)
-torch.__target.Tensor = TensorRef
+#torch = TorchLazyWrapper(torch)
+#torch.__target.Tensor = TensorRef
