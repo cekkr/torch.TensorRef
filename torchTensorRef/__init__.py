@@ -40,6 +40,8 @@ class TorchLazyWrapper:
             return attr
         elif isinstance(attr, type):  # Is class
             return analyzeClass(attr)
+        elif isinstance(attr, types.ModuleType):
+            return TorchLazyWrapper(attr)
         elif isinstance(
             attr,
             (
@@ -48,10 +50,10 @@ class TorchLazyWrapper:
                 types.BuiltinMethodType,
                 types.MethodType,
             ),
-        ) or callable(attr):
+        ) and callable(attr):
             return method_wrapper(attr)
-        elif isinstance(attr, object):
-            return TorchLazyWrapper(attr)
+
+        return attr
 
     def __setattr__(self, key, value):
         self.__target.__setattr__(key, value)
@@ -71,6 +73,11 @@ class TorchLazyWrapper:
     def __delitem__(self, key):
         self.__target.__delitem__(key)
 
+    def __call__(self, *args, **kwargs):
+        try:
+            return self.__target(*args, **kwargs)
+        except:
+            return self.__target.__call__(*args, **kwargs)
 
 
 ###
@@ -89,9 +96,6 @@ def noisy_importer(name, locals={}, globals={}, fromlist=[], level=0):
 
     res = old_import(name, locals, globals, fromlist, level)
 
-    if name.startswith('torch._C'):
-        return res
-
     if name == 'torch.Tensor':
         TorchTensor = name
 
@@ -108,7 +112,12 @@ def noisy_importer(name, locals={}, globals={}, fromlist=[], level=0):
 
         bi.__import__ = noisy_importer
 
-        res = TorchLazyWrapper(res)
+        if not name.startswith('torch._C'):
+            res = TorchLazyWrapper(res)
+        else:
+            def whoCares(*args, **kwargs):
+                print("seriously, who cares")
+            res.__dict__['_add_docstr'] = whoCares
 
     return res
 
@@ -139,6 +148,8 @@ def method_wrapper(func):
                 return TensorRef(result, tensorsManager)
 
         return result
+
+    wrapper.__doc__ = "basic"
 
     return wrapper
 
@@ -210,6 +221,12 @@ def classBoggart_creator(parent_class):
         return parent_class
 
 def analyzeClass(var):
+    try:
+        if len(var.__parameters__) != 0:
+            return var
+    except:
+        ignore = True
+
     return classBoggart_creator(var)
 
 ###
@@ -218,6 +235,7 @@ def analyzeClass(var):
 
 #import sys
 #setattr(sys.modules['torch'], 'TensorBase', 'dummy')
+import torch
 from torch import Tensor as TorchTensor
 from .TensorRef import TensorRef
 from .TensorsManager import TensorsManager
