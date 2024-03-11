@@ -78,6 +78,8 @@ def noisy_importer(
             ignore = True
 
     ### Obtain builtins import to hook
+
+    '''
     bi = None
     try:
         bi = locals["__builtins__"]
@@ -87,34 +89,51 @@ def noisy_importer(
     if bi is None:
         bi = defaultImport("builtins", locals, globals, fromlist, 0)
         locals["__builtins__"] = bi
+    '''
 
-    if bi is not None:
-        originalImport = bi['__import__']
+    originalImport = None
+    try:
+        originalImport = globals['__import__']
+    except:
+        ignore = True
 
-        if isinstance(originalImport, types.BuiltinFunctionType):
-            def wrapImport(
-                    name, locals={}, globals={}, fromlist=[], level=0, forceLoad=False
-            ):
-                return noisy_importer(
-                    name, locals, globals, fromlist, level, forceLoad, originalImport
-                )
+    try:
+        originalImport = globals['__builtins__']['__import__']
+    except:
+        ignore = True
 
-            wrapImport.__dict__['inside'] = name
-            wrapImport.__dict__['original'] = originalImport
-            bi.__import__ = wrapImport
-            defaultImport = originalImport
-        else:
-            try:
-                defaultImport = originalImport.__dict__['original']
-            except:
-                ignore = True
+    try:
+        originalImport = locals['__builtins__']['__import__']
+    except:
+        ignore = True
+
+    if isinstance(originalImport, types.BuiltinFunctionType):
+        def wrapImport(
+                name, locals={}, globals={}, fromlist=[], level=0, forceLoad=False
+        ):
+            return noisy_importer(
+                name, locals, globals, fromlist, level, forceLoad, originalImport
+            )
+
+        wrapImport.__dict__['inside'] = name
+        wrapImport.__dict__['original'] = originalImport
+        locals['__import__'] = wrapImport
+        defaultImport = originalImport
+    else:
+        try:
+            defaultImport = originalImport.__dict__['original']
+        except:
+            ignore = True
 
     if (name.startswith("torch") or (inside != None and inside.startswith('torch'))) and inside != 'torch._tensor':
         res = defaultImport(name, locals, globals, fromlist, level)
         if name != 'builtins':
             wrapModule(res)
     else:
-        res = defaultImport(name, locals, globals, fromlist, level)
+        try:
+            res = defaultImport(name, locals, globals, fromlist, level)
+        except Exception as err:
+            raise ImportError()
 
 
     '''
