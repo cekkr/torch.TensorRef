@@ -7,7 +7,7 @@ class ProxyInfo:
         self.device = "cpu"
 
 
-class TensorRef:
+class TensorRef():
 
     def __init__(self, target, tensorsManager):
         setattr(self, "target", target)
@@ -108,12 +108,10 @@ class TensorRef:
         return self.target.__iter__()
 
 
-
 # Create math operation magic functions
 ops = ["add", "sub", "truediv", "floordiv", "mul", "mod", "divmod", "pow", "and", "or", "lshift", "rshift", "xor"]
 
-
-def applyMagicMethod(op):
+def applyMagicMethod_math(op):
     op = "__" + op + "__"
 
     try:
@@ -154,6 +152,27 @@ def applyMagicMethod(op):
         ignore = True
 
 for op in ops:
-    applyMagicMethod(op)
-    applyMagicMethod("r" + op)
-    applyMagicMethod("i" + op)
+    applyMagicMethod_math(op)
+    applyMagicMethod_math("r" + op)
+    applyMagicMethod_math("i" + op)
+
+# Generic magic proxy functions
+magics = dir(Tensor)
+for m in magics:
+    if m.startswith('__'):
+        try:
+            magic = getattr(Tensor, m)
+
+            magicRef = None
+            try:
+                magicRef = getattr(TensorRef, m)
+            except:
+                ignore = True
+
+            if magicRef is None:
+                def magicWrapper(*args, **kwargs):
+                    return magic(*args, **kwargs)
+                setattr(TensorRef, m, magicWrapper)
+
+        except Exception as err:
+            ignore = True
