@@ -1,10 +1,11 @@
-import inspect
+#import inspect
 import types
+import copy
 
 import torch
 from torch import Tensor as TorchTensor
 
-from .TensorProxy import TensorProxy
+from .TensorRef import TensorRef
 from .TensorsManager import TensorsManager
 
 tensorsManager = TensorsManager()
@@ -26,7 +27,7 @@ class TorchWrapper:
 ### Analyze
 ###
 
-'''
+"""
 def analyzeVar(var, name):
     if isinstance(var, (int, float, str)):
         return var
@@ -43,7 +44,7 @@ def analyzeVar(var, name):
     #    return var
 
     return var
-'''
+"""
 
 ###
 ### Class
@@ -57,7 +58,7 @@ def method_wrapper(func):
         # print(f"After calling {func.__name__}")
 
         if isinstance(result, TorchTensor):
-            return TensorProxy(result, tensorsManager)
+            return TensorRef(result, tensorsManager)
 
         return result
 
@@ -70,86 +71,60 @@ def class_wrapper(cls):
             setattr(cls, name, method_wrapper(method))
     return cls
 
+def classBoggart_creator(parent_class):
+    try:
+        # Define a new subclass with customized behavior or properties if needed
+        class ClassBoggart(parent_class):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+
+            def __call__(self, *args, **kwargs):
+                args = list(args)
+                for a in range(0, len(args)):
+                    arg = args[a]
+                    if isinstance(arg, TensorRef):
+                        args[a] = arg.target
+                args = tuple(args)
+
+                res = super().__call__(*args, **kwargs)
+                return res
+
+        # Return the dynamically created subclass
+        return ClassBoggart
+
+    except:
+        return parent_class
 
 def analyzeClass(var):
-    methods = [
-        member
-        for member in dir(var)
-        if callable(getattr(var, member)) and not member.startswith("__")
-    ]
-
-    print("Methods of MyClass:")
-    for method in methods:
-        print(method)
-
-    # If you want to include methods from base classes as well, use inspect.getmembers() with a filter
-    all_methods = inspect.getmembers(var, predicate=inspect.isfunction)
-
-    print("\nAll methods of MyClass (including base classes):")
-    for method_name, method in all_methods:
-        print(method_name)
-
-    return var
-
-
-cycledObjs = []
-
-'''
-def cycleObj(obj, name):
-    vars = []
-
-    if name == "torch":
-        vars = [
-            # Submodules
-            "nn",
-            # Functions
-            "rand",
-            "empty",
-            "randn",
-            "randint",
-            "randperm",
-            "zeros",
-            "ones",
-            "full",
-            "eye",
-            "linspace",
-            "logspace",
-        ]
-
-    if name.startswith("torch.nn"):
-        vars = dir(obj)
-
-    for var in vars:
-        if not var.startswith("_"):
-            val = getattr(obj, var)
-            if True or val not in cycledObjs:
-                cycledObjs.append(val)
-                val = analyzeVar(val, name + "." + var)
-                setattr(obj, var, val)
-
-    return obj
-'''
+    return classBoggart_creator(var)
 
 class TorchLazyWrapper:
     def __init__(self, target):
         setattr(self, "__target", target)
 
     def __getattr__(self, name):
-        if name == '__target' or name == '_TorchLazyWrapper__target':
-            return super().__getattribute__('__target')
+        if name == "__target" or name == "_TorchLazyWrapper__target":
+            return super().__getattribute__("__target")
 
         attr = getattr(self.__target, name)
 
         if isinstance(attr, (int, float, str)):
             return attr
         elif isinstance(attr, type):  # Is class
-            return analyzeClass(attr)  # TorchWrapper(var)
+            return analyzeClass(attr)
         elif isinstance(
-                attr, (types.FunctionType, types.BuiltinFunctionType, types.BuiltinMethodType, types.MethodType)
+            attr,
+            (
+                types.FunctionType,
+                types.BuiltinFunctionType,
+                types.BuiltinMethodType,
+                types.MethodType,
+            ),
         ) or callable(attr):
             return method_wrapper(attr)
         elif isinstance(attr, object):
             return TorchLazyWrapper(attr)
 
+
 torch = TorchLazyWrapper(torch)
-torch.__target.Tensor = TensorProxy
+torch.__target.Tensor = TensorRef

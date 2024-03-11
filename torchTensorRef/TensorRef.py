@@ -6,7 +6,7 @@ class ProxyInfo:
         self.device = "cpu"
 
 
-class TensorProxy:
+class TensorRef:
     """
     def __init__(self, *args, **kwargs):
         # Initialize the target object, passing all arguments
@@ -21,14 +21,15 @@ class TensorProxy:
         setattr(self, "proxyInfo", ProxyInfo())
         self.proxyInfo.tensorsManager = tensorsManager
 
+    """
     def __add__(self, other):
         self.toGPU()
         res = None
         if isinstance(other, (Tensor)):
-            res = TensorProxy(self.target + other, self.proxyInfo.tensorsManager)
-        elif isinstance(other, TensorProxy):
+            res = TensorRef(self.target + other, self.proxyInfo.tensorsManager)
+        elif isinstance(other, TensorRef):
             other.toGPU()
-            res = TensorProxy(self.target + other.target, self.proxyInfo.tensorsManager)
+            res = TensorRef(self.target + other.target, self.proxyInfo.tensorsManager)
             other.toCPU()
         else:
             raise TypeError("Unsupported type for addition")
@@ -40,10 +41,10 @@ class TensorProxy:
         self.toGPU()
         res = None
         if isinstance(other, (Tensor)):
-            res = TensorProxy(self.target - other, self.proxyInfo.tensorsManager)
-        elif isinstance(other, TensorProxy):
+            res = TensorRef(self.target - other, self.proxyInfo.tensorsManager)
+        elif isinstance(other, TensorRef):
             other.toGPU()
-            res = TensorProxy(self.target - other.target, self.proxyInfo.tensorsManager)
+            res = TensorRef(self.target - other.target, self.proxyInfo.tensorsManager)
             other.toCPU()
         else:
             raise TypeError("Unsupported type for addition")
@@ -55,16 +56,17 @@ class TensorProxy:
         self.toGPU()
         res = None
         if isinstance(other, (Tensor)):
-            res = TensorProxy(self.target * other, self.proxyInfo.tensorsManager)
-        elif isinstance(other, TensorProxy):
+            res = TensorRef(self.target * other, self.proxyInfo.tensorsManager)
+        elif isinstance(other, TensorRef):
             other.toGPU()
-            res = TensorProxy(self.target * other.target, self.proxyInfo.tensorsManager)
+            res = TensorRef(self.target * other.target, self.proxyInfo.tensorsManager)
             other.toCPU()
         else:
             raise TypeError("Unsupported type for addition")
 
         self.toCPU()
         return res
+    """
 
     def __setattr__(self, key, value):
         if key == "proxyInfo" or key == "target":
@@ -84,6 +86,7 @@ class TensorProxy:
         attr = getattr(self.target, name)
 
         if name == "to":
+
             def ignore(*args, **kwargs):
                 dev = args[0]
                 if isinstance(dev, str):
@@ -104,13 +107,13 @@ class TensorProxy:
                 proxies = []
                 for a in range(0, len(args)):
                     value = args[a]
-                    if isinstance(value, TensorProxy):
+                    if isinstance(value, TensorRef):
                         proxies.append(value)
                         args[a] = value.toGPU()
 
                 for key, value in kwargs.items():
                     print(f"{key}: {value}")
-                    if isinstance(value, TensorProxy):
+                    if isinstance(value, TensorRef):
                         proxies.append(value)
                         kwargs[key] = value.toGPU()
 
@@ -126,7 +129,7 @@ class TensorProxy:
                     if name == "cpu":
                         self.target = result
                     else:
-                        result = TensorProxy(result, self.proxyInfo.tensorsManager)
+                        result = TensorRef(result, self.proxyInfo.tensorsManager)
                         result.toCPU()
 
                 return result
@@ -148,3 +151,45 @@ class TensorProxy:
             self.target = self.target.to("cpu")
 
         return self.target
+
+
+# Create math operation magic functions
+ops = ["add", "sub", "truediv", "floordiv", "mul", "mod", "divmod", "pow"]
+
+
+def applyMagicMethod(op):
+    op = "__" + op + "__"
+
+    try:
+        method = getattr(Tensor, op)
+        if method is not None:
+
+            def mathWrapper(self, other):
+                self.toGPU()
+                res = None
+                if isinstance(other, Tensor):
+                    res = method(self.target, other)
+                elif isinstance(other, TensorRef):
+                    other.toGPU()
+                    res = method(self.target, other.target)
+                    other.toCPU()
+                else:
+                    raise TypeError("Unsupported type for addition")
+
+                res = TensorRef(
+                    res, self.proxyInfo.tensorsManager
+                )
+                
+                res.toCPU()
+
+                self.toCPU()
+                return res
+
+            setattr(TensorRef, op, mathWrapper)
+    except:
+        ignore = True
+
+for op in ops:
+    applyMagicMethod(op)
+    applyMagicMethod("r" + op)
+    applyMagicMethod("i" + op)
