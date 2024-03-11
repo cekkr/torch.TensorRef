@@ -107,6 +107,11 @@ class TensorRef():
     def __iter__(self):
         return self.target.__iter__()
 
+    def __repr__(self, *args, **kwargs):
+        return self.target.__repr__(*args, **kwargs)
+
+    def __str__(self, *args, **kwargs):
+        return self.target.__str__(*args, **kwargs)
 
 # Create math operation magic functions
 ops = ["add", "sub", "truediv", "floordiv", "mul", "mod", "divmod", "pow", "and", "or", "lshift", "rshift", "xor"]

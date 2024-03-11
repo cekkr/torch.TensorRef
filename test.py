@@ -25,13 +25,13 @@ torchTensorRef.tensorsManager.device = device
 tensor_a = torch.rand(2, 3)
 tensor_b = torch.rand(2, 3)
 
-print("Tensor A:\n", tensor_a.target)
-print("Tensor B:\n", tensor_b.target)
+print("Tensor A:\n", tensor_a)
+print("Tensor B:\n", tensor_b)
 
 # Sum the two tensors
 tensor_sum = tensor_a + tensor_b
 
-print("Sum of Tensor A and B:\n", tensor_sum.target)
+print("Sum of Tensor A and B:\n", tensor_sum)
 
 ### RNN testing
 
@@ -63,6 +63,6 @@ input_tensor = torch.randn(5, 10)  # Batch size of 5, feature size of 10
 # Forward pass through the model
 output = model(input_tensor)
 
-print(output.target)  # Print the output of the model
+print(output)  # Print the output of the model
 
 print("End of test")
