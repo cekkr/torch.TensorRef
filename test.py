@@ -12,9 +12,9 @@ import torchTensorRef
 
 device = "cpu"
 
-if torch.cuda.is_available():
+if torch.cuda.is_available():  # CUDA and HIP
     device = torch.device("cuda")
-elif torch.backends.mps.is_available():
+elif torch.backends.mps.is_available():  # Apple Metal
     device = torch.device("mps")
 else:
     print("MPS device not found.")
