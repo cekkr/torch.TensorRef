@@ -53,6 +53,14 @@ def analyzeVar(var, name):
 
 def method_wrapper(func):
     def wrapper(*args, **kwargs):
+
+        args = list(args)
+        for a in range(0, len(args)):
+            arg = args[a]
+            if isinstance(arg, TensorRef):
+                args[a] = arg.target
+        args = tuple(args)
+
         # print(f"Before calling {func.__name__}")
         result = func(*args, **kwargs)
         # print(f"After calling {func.__name__}")
@@ -78,16 +86,14 @@ def classBoggart_creator(parent_class):
             def __init__(self, *args, **kwargs):
                 super().__init__(*args, **kwargs)
 
-            def __call__(self, *args, **kwargs):
-                args = list(args)
-                for a in range(0, len(args)):
-                    arg = args[a]
-                    if isinstance(arg, TensorRef):
-                        args[a] = arg.target
-                args = tuple(args)
-
-                res = super().__call__(*args, **kwargs)
-                return res
+                vars = dir(self)
+                for v in vars:
+                    try:
+                        attr = getattr(self, v)
+                        if callable(attr):
+                            setattr(self, v, method_wrapper(attr))
+                    except:
+                        ignore = True
 
         # Return the dynamically created subclass
         return ClassBoggart
