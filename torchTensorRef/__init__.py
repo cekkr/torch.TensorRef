@@ -6,6 +6,11 @@
 # import copy
 import types
 
+def is_builtin_type(obj):
+    builtin_types = (int, float, str, list, dict, tuple, set, bool, bytes)
+    return isinstance(obj, builtin_types) or type(obj) in vars(types).values()
+
+
 ###
 ### Import hook (ugly solutions for lazy people)
 ###
@@ -14,6 +19,15 @@ TensorRef = None
 TorchTensor = None
 
 def wrapModule(mod):
+
+    '''
+    try:
+        if mod.__dict__['__wrapped']:
+            return mod
+    except:
+        ignore = True
+    '''
+    
     vars = dir(mod)
     for v in vars:
         try:
@@ -24,12 +38,18 @@ def wrapModule(mod):
                     types.FunctionType,
                     types.BuiltinFunctionType,
                     types.BuiltinMethodType,
-                    types.MethodType,
+                    types.MethodType
                 ),
             ) and callable(attr):
                 mod.__dict__[v] = method_wrapper(attr)
+
+            elif inspect.isclass(attr) or isinstance(attr, (types.ModuleType)):
+                mod.__dict__[v] = wrapModule(attr)
         except:
             ignore = True
+
+    mod.__dict__['__wrapped'] = True
+    return mod
 
 
 old_import = __import__
@@ -48,7 +68,7 @@ def noisy_importer(
     if defaultImport is None:
         defaultImport = old_import
 
-    # print(f'name: {name!r}')
+    #print(f'name: {name!r}')
 
     if forceLoad:
         del sys.modules[name]
@@ -91,6 +111,7 @@ def noisy_importer(
         locals["__builtins__"] = bi
     '''
 
+    #TODO: check if originalImport is really useful
     originalImport = None
     try:
         originalImport = globals['__import__']
@@ -130,10 +151,10 @@ def noisy_importer(
         except:
             ignore = True
 
-    if (name.startswith("torch") and (inside != None and inside.startswith('torch'))) and inside != 'torch._tensor':
+    if (name.startswith("torch") or (name.startswith('.') and inside != None and inside.startswith('torch'))) and inside != 'torch._tensor':
         res = defaultImport(name, locals, globals, fromlist, level)
         if name != 'builtins': # still necessary?
-            wrapModule(res)
+            res = wrapModule(res)
     else:
         try:
             res = defaultImport(name, locals, globals, fromlist, level)
