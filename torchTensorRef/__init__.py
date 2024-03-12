@@ -158,6 +158,9 @@ def noisy_importer(
         except:
             ignore = True
 
+    #if name.startswith('torch.nn'):
+    #    print("check")
+
     if (name.startswith("torch") or (name.startswith('.') and inside != None and inside.startswith('torch'))) and inside != 'torch._tensor':
         res = defaultImport(name, locals, globals, fromlist, level)
         if name != 'builtins': # still necessary?
