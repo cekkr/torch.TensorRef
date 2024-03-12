@@ -1,7 +1,7 @@
 ###
 ###
 ###
-
+import inspect
 # import inspect
 # import copy
 import types
@@ -19,16 +19,21 @@ TensorRef = None
 TorchTensor = None
 
 def wrapModule(mod):
+    if mod.__name__ == 'wrapper':
+        return mod
 
-    '''
+    wrappedVars = 0
     try:
-        if mod.__dict__['__wrapped']:
-            return mod
+        wrappedVars = mod.__dict__['__wrapped']
     except:
         ignore = True
-    '''
 
     vars = dir(mod)
+    mod.__dict__['__wrapped'] = len(vars)
+
+    if wrappedVars is len(vars):
+        return mod
+
     for v in vars:
         try:
             attr = mod.__dict__[v]
@@ -45,12 +50,12 @@ def wrapModule(mod):
             ) and callable(attr):
                 mod.__dict__[v] = method_wrapper(attr)
 
-            elif inspect.isclass(attr) or isinstance(attr, (types.ModuleType)):
-                mod.__dict__[v] = wrapModule(attr)
+            elif inspect.isclass(attr) or inspect.ismodule(attr):
+                if attr.__module__.startswith('torch'):
+                    mod.__dict__[v] = wrapModule(attr)
         except:
             ignore = True
 
-    mod.__dict__['__wrapped'] = True
     return mod
 
 
@@ -184,6 +189,9 @@ builtins.__import__ = noisy_importer
 
 
 def method_wrapper(func):
+    if func.__name__ is 'wrapper':
+        return func
+
     class wrapper:
         def __new__(cls, *args, **kwargs):
             args = list(args)
