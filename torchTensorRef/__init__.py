@@ -27,11 +27,13 @@ def wrapModule(mod):
     except:
         ignore = True
     '''
-    
+
     vars = dir(mod)
     for v in vars:
         try:
             attr = mod.__dict__[v]
+
+            #TODO: try to invert the conditions?
             if isinstance(
                 attr,
                 (
