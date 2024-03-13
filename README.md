@@ -104,7 +104,7 @@ torch.TensorRef is in the alpha stage. The most important thing was to demonstra
 - The Flow strategy: is the strategy able to make effectively an advantage to use an accelerator with low memory available maintaining advantages compared to a CPU execution. So its development is fundamental.
 - The tensorsManager structure: is important to find the best way to structure this class to provide all the functionalities needed to give to the programmer all tools necessary to obtain the best performances and control over the model. 
 - Existing models testing: is important to have testers that inform the collaborators about the limitations of torch.TensorRef in the use of models not written around the library and what to implement to improve the simplicity and the powerfulness of the project.
-- Improving the injection system: in fact for the moment it recursively inject the wrappers inside torch and its submodules. But this can bring to issue when some functions are looking for the torch.Tensor object, so is important to exclude some classes from the wrapping. Finally, the injection takes 4 seconds, a more guided injection will be lighter and faster.
+- Improving the injection system: in fact for the moment it recursively inject the wrappers inside torch and its submodules. But this can bring to issue when some functions are looking for the torch.Tensor object, so is important to exclude some classes from the wrapping. Finally, the injection takes 4 seconds, a more guided injection will be lighter and faster. Is also necessary to improve the compatibility with torch Tensor's options.
 
 The project is available on GitHub at the address: [https://github.com/cekkr/torch.TensorRef
 ](https://github.com/cekkr/torch.TensorRef)
