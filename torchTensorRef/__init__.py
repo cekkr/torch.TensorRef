@@ -15,6 +15,16 @@ def is_builtin_type(obj):
 ### Import hook (ugly solutions for lazy people)
 ###
 
+injectTo = ['torch']
+exclude = ['torch._tensor']
+
+def startsWith(str, arr):
+    for a in arr:
+        if str.startswith(a):
+            return True 
+    return False
+    
+
 def method_wrapper(func):
     if func.__name__ is 'wrapper':
         return func
@@ -94,7 +104,7 @@ def wrapModule(mod):
                 mod.__dict__[v] = method_wrapper(attr)
 
             elif inspect.isclass(attr) or inspect.ismodule(attr):
-                if attr.__module__.startswith('torch'):
+                if startsWith(attr.__module__, injectTo):
                     mod.__dict__[v] = wrapModule(attr)
         except:
             ignore = True
@@ -204,7 +214,7 @@ def noisy_importer(
     #if name.startswith('torch.nn'):
     #    print("check")
 
-    if (name.startswith("torch") or (name.startswith('.') and inside != None and inside.startswith('torch'))) and inside != 'torch._tensor':
+    if (startsWith(name, injectTo) or (name.startswith('.') and inside != None and startsWith(inside, injectTo))) and not startsWith(name, injectTo):
         res = defaultImport(name, locals, globals, fromlist, level)
         if name != 'builtins': # still necessary?
             res = wrapModule(res)
