@@ -1,4 +1,5 @@
 # torch.TensorRef
+![](assets/tensorref.png)
 **Disclaimer: torch.TensorRef is an indipendent project respect than the PyTorch project.**
 
 ## Premises
