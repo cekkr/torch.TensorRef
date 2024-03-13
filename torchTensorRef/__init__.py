@@ -46,7 +46,7 @@ def method_wrapper(func):
     except Exception as err:
         ignore = True
 
-    wrapper.__name__ = func.__name__
+    wrapper.__module__ = func.__module__
 
     return wrapper
 
@@ -66,7 +66,7 @@ def wrapModule(mod):
     vars = dir(mod)
     mod.__dict__['__wrapped'] = len(vars)
 
-    if wrappedVars is len(vars):
+    if wrappedVars == len(vars):
         return mod
 
     for v in vars:
