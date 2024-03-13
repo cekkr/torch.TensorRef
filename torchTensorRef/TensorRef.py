@@ -131,8 +131,7 @@ def applyMagicMethod_math(op):
                     #res = method(self.target, other)
                     other = TensorRef(other, self.proxyInfo.tensorsManager)
                     withBaseTensor = True
-
-                if isinstance(other, TensorRef):
+                elif isinstance(other, TensorRef):
                     other.toGPU()
                     res = method(self.target, other.target)
                     other.toCPU()

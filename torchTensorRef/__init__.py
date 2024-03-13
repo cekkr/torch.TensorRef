@@ -36,7 +36,7 @@ def method_wrapper(func):
                 arg = args[a]
                 if TensorRef is not None:
                     if isinstance(arg, TensorRef):
-                        args[a] = arg.target
+                        args[a] = arg.toGPU()
             args = tuple(args)
 
             # print(f"Before calling {func.__name__}")
@@ -45,7 +45,9 @@ def method_wrapper(func):
 
             if TorchTensor is not None:
                 if isinstance(result, TorchTensor):
-                    return TensorRef(result, tensorsManager)
+                    ref = TensorRef(result, tensorsManager)
+                    ref.toCPU()
+                    return ref
 
             return result
 
