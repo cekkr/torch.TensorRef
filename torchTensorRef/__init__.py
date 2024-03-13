@@ -16,7 +16,7 @@ def is_builtin_type(obj):
 ###
 
 injectTo = ['torch']
-exclude = ['torch.fx', 'torch._', 'torch.autograd', 'torchgen', 'torchTensorRef', 'torch.storage', 'functools', 'torch.utils', 'torch.library']
+exclude = ['torch.fx', 'torch.jit', 'torch._', 'torch.autograd', 'torchgen', 'torchTensorRef', 'torch.storage', 'functools', 'torch.utils', 'torch.library']
 
 def startsWith(str, arr):
     for a in arr:
@@ -198,7 +198,7 @@ def wrapModule(mod):
 
             #TODO: try to invert the conditions?
             if inspect.isclass(attr) or inspect.ismodule(attr):
-                if startsWith(attr.__module__+'.'+attr.__name__, injectTo):
+                if startsWith(attr.__module__+'.'+attr.__name__, injectTo) and not startsWith(attr.__module__+'.'+attr.__name__, exclude):
                     wr = wrapModule(attr)
                     trySet(v, wr)
             elif isinstance(
