@@ -29,7 +29,7 @@ Here arrives torch.TensorRef. Is a python library which wrap the currently insta
 
 For example, I have this tensor:
 
-```python
+``` python
 import torch
 hi = torch.rand(2,3) # hi is a torch.Tensor object
 ```
@@ -44,7 +44,7 @@ Now we have two tensors, `hi` and `hiGpu`.
 
 Instead, with `TensorRef`:
 
-```python
+``` python
 import torchTensorRef # this module automatically injects TensorRef in torch module
 import torch
 
@@ -118,15 +118,28 @@ Riccardo Cecchini
 ## How to use the library
 The library depends on torch library, and to make it work is necessary to import it before importing torch library:
 
-```
+``` python
 import torchTensorRef
 import torch
 ```
 
 Currently, the selection of the accelerator is very basic, and is made setting the variable `torchTensorRef.tensorsManager.device`, for example:
 
-```
+``` python
 torchTensorRef.tensorsManager.device = torch.device('cuda')
 ```
 
 Then you can use the framework normally. If you need to access to the original torch.Tensor object you have to call the attribute 'target' of the TensorRef object: `tensorRef.target`.
+
+### Inject TensorRef to other libraries
+You can inject TensorRef to other libraries appending it to the list "injectTo":
+
+``` python
+torchTensorRef.injectTo.append('transformers') 
+```
+
+You can also exclude a particular module:
+
+``` python
+torchTensorRef.injectTo.exclude('transformers.particular_module') 
+```

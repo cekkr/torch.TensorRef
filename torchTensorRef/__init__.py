@@ -36,7 +36,7 @@ def method_wrapper(func):
                 arg = args[a]
                 if TensorRef is not None:
                     if isinstance(arg, TensorRef):
-                        args[a] = arg.target
+                        args[a] = arg.toGPU()
             args = tuple(args)
 
             # print(f"Before calling {func.__name__}")
@@ -45,7 +45,9 @@ def method_wrapper(func):
 
             if TorchTensor is not None:
                 if isinstance(result, TorchTensor):
-                    return TensorRef(result, tensorsManager)
+                    ref = TensorRef(result, tensorsManager)
+                    ref.toCPU()
+                    return ref
 
             return result
 
@@ -214,7 +216,7 @@ def noisy_importer(
     #if name.startswith('torch.nn'):
     #    print("check")
 
-    if (startsWith(name, injectTo) or (name.startswith('.') and inside != None and startsWith(inside, injectTo))) and not startsWith(name, injectTo):
+    if (startsWith(name, injectTo) or (name.startswith('.') and inside != None and startsWith(inside, injectTo))) and not startsWith(name, exclude):
         res = defaultImport(name, locals, globals, fromlist, level)
         if name != 'builtins': # still necessary?
             res = wrapModule(res)
