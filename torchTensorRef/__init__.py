@@ -117,17 +117,18 @@ def method_wrapper(func):
                         args[a] = arg.toGPU()
             args = tuple(args)
 
-            kpos = 0
-            args = list(args)
-            for name, param in func_signature.parameters.items():
-                if param.kind in [param.POSITIONAL_ONLY, param.POSITIONAL_OR_KEYWORD]:
-                    if name not in kwargs:
-                        if len(args) > kpos:
-                            kwargs[name] = args[kpos]
-                            del args[kpos]
-                else:
-                    kpos += 1
-            args = tuple(args)
+            if False: #kwargs checker
+                kpos = 0
+                args = list(args)
+                for name, param in func_signature.parameters.items():
+                    if param.kind in [param.POSITIONAL_ONLY, param.POSITIONAL_OR_KEYWORD]:
+                        if name not in kwargs:
+                            if len(args) > kpos:
+                                kwargs[name] = args[kpos]
+                                del args[kpos]
+                    else:
+                        kpos += 1
+                args = tuple(args)
 
             # print(f"Before calling {func.__name__}")
             result = func(*args, **kwargs)

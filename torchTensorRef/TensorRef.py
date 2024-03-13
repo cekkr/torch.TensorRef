@@ -134,12 +134,14 @@ def applyMagicMethod_math(op):
                     #res = method(self.target, other)
                     other = TensorRef(other, self.proxyInfo.tensorsManager)
                     withBaseTensor = True
-                elif isinstance(other, TensorRef):
+
+                if isinstance(other, TensorRef):
                     other.toGPU()
-                    res = method(self.target, other.target)
+
+                res = method(self.target, other.target)
+
+                if isinstance(other, TensorRef):
                     other.toCPU()
-                else:
-                    raise TypeError("Unsupported type for math operation")
 
                 res = TensorRef(
                     res, self.proxyInfo.tensorsManager
