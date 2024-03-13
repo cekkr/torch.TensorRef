@@ -216,7 +216,7 @@ def noisy_importer(
     #if name.startswith('torch.nn'):
     #    print("check")
 
-    if (startsWith(name, injectTo) or (name.startswith('.') and inside != None and startsWith(inside, injectTo))) and not startsWith(name, injectTo):
+    if (startsWith(name, injectTo) or (name.startswith('.') and inside != None and startsWith(inside, injectTo))) and not startsWith(name, exclude):
         res = defaultImport(name, locals, globals, fromlist, level)
         if name != 'builtins': # still necessary?
             res = wrapModule(res)
