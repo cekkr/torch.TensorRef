@@ -20,13 +20,13 @@ exclude = ['torch.fx', 'torch.jit', 'torch._', 'torch.autograd', 'torchgen', 'to
 
 def startsWith(str, arr):
     for a in arr:
-        if str.startswith(a):
+        if str.startswith(a): # or str.endswith(a):
             return True 
     return False
     
-
+itsMe = []
 def method_wrapper(func):
-    if func.__name__ == 'funWrapper' or startsWith(func.__module__+'.'+func.__name__, exclude) or not startsWith(func.__module__+'.'+func.__name__, injectTo):
+    if func in itsMe or startsWith(func.__module__+'.'+func.__name__, exclude) or not startsWith(func.__module__+'.'+func.__name__, injectTo):
         return func
 
     print(func.__module__+'.'+func.__name__)
@@ -141,7 +141,7 @@ def method_wrapper(func):
 
             return result
 
-    wrapper = classWrapper
+    wrapper = classWrapper.funWrapper
 
     try:
         wrapModule(func)
@@ -158,6 +158,7 @@ def method_wrapper(func):
             except:
                 ignore = True
 
+    itsMe.append(wrapper)
     return wrapper
 
 TensorRef = None
