@@ -3,9 +3,9 @@ import sys
 # Add the directory containing your module to the Python path
 sys.path.append("./")
 
+import torchTensorRef
 import torch
 import torch.nn as nn
-import torchTensorRef
 
 # from torchTensorRef import torch
 # nn = torch.nn

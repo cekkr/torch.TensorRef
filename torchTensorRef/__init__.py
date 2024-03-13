@@ -15,6 +15,41 @@ def is_builtin_type(obj):
 ### Import hook (ugly solutions for lazy people)
 ###
 
+def method_wrapper(func):
+    if func.__name__ is 'wrapper':
+        return func
+
+    class wrapper:
+        def __new__(cls, *args, **kwargs):
+            args = list(args)
+            for a in range(0, len(args)):
+                arg = args[a]
+                if TensorRef is not None:
+                    if isinstance(arg, TensorRef):
+                        args[a] = arg.target
+            args = tuple(args)
+
+            # print(f"Before calling {func.__name__}")
+            result = func(*args, **kwargs)
+            # print(f"After calling {func.__name__}")
+
+            if TorchTensor is not None:
+                if isinstance(result, TorchTensor):
+                    return TensorRef(result, tensorsManager)
+
+            return result
+
+    # wrapper.__doc__ = "basic"
+
+    try:
+        wrapModule(func)
+    except Exception as err:
+        ignore = True
+
+    wrapper.__name__ = func.__name__
+
+    return wrapper
+
 TensorRef = None
 TorchTensor = None
 
@@ -185,44 +220,6 @@ def noisy_importer(
 import builtins
 
 builtins.__import__ = noisy_importer
-
-###
-### torch wrappers
-###
-
-
-def method_wrapper(func):
-    if func.__name__ is 'wrapper':
-        return func
-
-    class wrapper:
-        def __new__(cls, *args, **kwargs):
-            args = list(args)
-            for a in range(0, len(args)):
-                arg = args[a]
-                if TensorRef is not None:
-                    if isinstance(arg, TensorRef):
-                        args[a] = arg.target
-            args = tuple(args)
-
-            # print(f"Before calling {func.__name__}")
-            result = func(*args, **kwargs)
-            # print(f"After calling {func.__name__}")
-
-            if TorchTensor is not None:
-                if isinstance(result, TorchTensor):
-                    return TensorRef(result, tensorsManager)
-
-            return result
-
-    # wrapper.__doc__ = "basic"
-
-    try:
-        wrapModule(func)
-    except Exception as err:
-        ignore = True
-
-    return wrapper
 
 
 ###
