@@ -90,7 +90,7 @@ class TensorRef():
     def toGPU(self):
         if self.target.is_cpu:
             dev = self.proxyInfo.tensorsManager.device
-            if dev is not None and dev is not "cpu":
+            if dev is not None and dev != "cpu":
                 self.target = self.target.to(dev)
 
         return self.target
