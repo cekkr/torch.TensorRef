@@ -39,14 +39,22 @@ def method_wrapper(func):
 
             return result
 
-    # wrapper.__doc__ = "basic"
+    
 
     try:
         wrapModule(func)
     except Exception as err:
         ignore = True
 
-    wrapper.__module__ = func.__module__
+
+    vars = dir(func)
+    for v in vars:
+        if v != '__new__':
+            try:
+                attr = getattr(func, v)
+                setattr(wrapper, v, attr)
+            except:
+                ignore = True
 
     return wrapper
 
