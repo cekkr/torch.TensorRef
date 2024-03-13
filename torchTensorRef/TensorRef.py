@@ -112,6 +112,9 @@ class TensorRef():
 
     def __str__(self, *args, **kwargs):
         return self.target.__str__(*args, **kwargs)
+    
+    def __getitem__(self, key):
+        return self.target.__getitem__(key)
 
 # Create math operation magic functions
 ops = ["add", "sub", "truediv", "floordiv", "mul", "mod", "divmod", "pow", "and", "or", "lshift", "rshift", "xor"]

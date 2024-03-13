@@ -16,7 +16,7 @@ def is_builtin_type(obj):
 ###
 
 injectTo = ['torch']
-exclude = ['torch._tensor']
+exclude = ['torch._tensor', 'torch.fx']
 
 def startsWith(str, arr):
     for a in arr:
