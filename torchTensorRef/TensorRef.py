@@ -135,8 +135,9 @@ def applyMagicMethod_math(op):
                     other = TensorRef(other, self.proxyInfo.tensorsManager)
                     withBaseTensor = True
 
+                otherTarget = other
                 if isinstance(other, TensorRef):
-                    other.toGPU()
+                    otherTarget = other.toGPU()
 
                 res = method(self.target, other.target)
 
