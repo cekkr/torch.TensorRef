@@ -26,52 +26,19 @@ def startsWith(str, arr):
     
 itsMe = []
 def method_wrapper(func):
-    if func in itsMe or startsWith(func.__module__+'.'+func.__name__, exclude) or not startsWith(func.__module__+'.'+func.__name__, injectTo):
+    name = func.__module__+'.'+func.__name__
+    if func in itsMe or startsWith(name, exclude) or not startsWith(name, injectTo):
         return func
 
-    print(func.__module__+'.'+func.__name__)
+    ignoreGPU = False
+    passAsRef = False
+    if name == 'torch.nn.modules.module.register_parameter':
+        ignoreGPU = True
+        passAsRef = True
+
+    print(name)
 
     func_signature = inspect.signature(func)
-
-    '''
-    wrapper = None
-    if isinstance(func, (types.MethodType, types.BuiltinMethodType, types.FunctionType)):
-        def defWrapper(*args, **kwargs):
-            args = list(args)
-            for a in range(0, len(args)):
-                arg = args[a]
-                if TensorRef is not None:
-                    if isinstance(arg, TensorRef):
-                        args[a] = arg.toGPU()
-            args = tuple(args)
-
-            kpos = 0
-            args = list(args)
-            for name, param in func_signature.parameters.items():
-                if param.kind in [param.POSITIONAL_ONLY, param.POSITIONAL_OR_KEYWORD]:
-                    if name not in kwargs:
-                        if len(args) > kpos:
-                            kwargs[name] = args[kpos]
-                            del args[kpos]
-                else:
-                    kpos += 1
-            args = tuple(args)
-
-            # print(f"Before calling {func.__name__}")
-            result = func(*args, **kwargs)
-            # print(f"After calling {func.__name__}")
-
-            if TorchTensor is not None:
-                if isinstance(result, TorchTensor):
-                    ref = TensorRef(result, tensorsManager)
-                    ref.toCPU()
-                    return ref
-
-            return result
-
-        wrapper = defWrapper
-    else:
-    '''
 
     class classWrapper:
 
@@ -113,31 +80,31 @@ def method_wrapper(func):
 
         def funWrapper(*args, **kwargs):
             args = list(args)
+
+            refs = []
             for a in range(0, len(args)):
                 arg = args[a]
                 if TensorRef is not None:
                     if isinstance(arg, TorchTensor):
                         args[a] = TensorRef(arg, tensorsManager)
-                    if isinstance(args[a], TensorRef):
-                        args[a].toGPU()
-            args = tuple(args)
-
-            if False: #kwargs checker
-                kpos = 0
-                args = list(args)
-                for name, param in func_signature.parameters.items():
-                    if param.kind in [param.POSITIONAL_ONLY, param.POSITIONAL_OR_KEYWORD]:
-                        if name not in kwargs:
-                            if len(args) > kpos:
-                                kwargs[name] = args[kpos]
-                                del args[kpos]
+                    if not passAsRef:
+                        if isinstance(args[a], TensorRef):
+                            if not ignoreGPU:
+                                refs.append(args[a])
+                                args[a] = args[a].toGPU()
+                            else:
+                                args[a] = args[a].target
                     else:
-                        kpos += 1
-                args = tuple(args)
+                        if isinstance(args[a], TensorRef):
+                            args[a] = None
+            args = tuple(args)
 
             # print(f"Before calling {func.__name__}")
             result = func(*args, **kwargs)
             # print(f"After calling {func.__name__}")
+
+            for r in refs:
+                r.toCPU()
 
             if TorchTensor is not None:
                 if isinstance(result, TorchTensor):

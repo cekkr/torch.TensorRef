@@ -95,7 +95,10 @@ class TensorRef(ABC):
         if self.target.is_cpu:
             dev = self.proxyInfo.tensorsManager.device
             if dev is not None and dev != "cpu":
-                self.target = self.target.to(dev)
+                res = self.target.to(dev)
+                if isinstance(self.target, torch.nn.Parameter) and not isinstance(res, torch.nn.Parameter):
+                    res = torch.nn.Parameter(res)
+                self.target = res
 
         return self.target
 
@@ -121,6 +124,7 @@ class TensorRef(ABC):
         return self.target.__getitem__(key)
 
 TensorRef.register(Tensor)
+TensorRef.register(torch.nn.Parameter)
 
 # Create math operation magic functions
 ops = ["add", "sub", "truediv", "floordiv", "mul", "mod", "divmod", "pow", "and", "or", "lshift", "rshift", "xor"]
