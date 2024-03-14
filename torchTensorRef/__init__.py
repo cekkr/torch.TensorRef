@@ -38,49 +38,18 @@ def method_wrapper(func):
 
     #print(name)
 
-    func_signature = inspect.signature(func)
+    #func_signature = inspect.signature(func)
+
+    ignore = False
+    if name == 'torch._C._add_docstr':
+        ignore = True
 
     class classWrapper:
-
-        def __new__(cls, *args, **kwargs):
-            '''
-            args = list(args)
-            for a in range(0, len(args)):
-                arg = args[a]
-                if TensorRef is not None:
-                    if isinstance(arg, TorchTensor):
-                        args[a] = TorchTensor(arg, tensorsManager)
-
-                    if isinstance(arg, TensorRef):
-                        args[a] = arg.toGPU()
-            args = tuple(args)
-
-            kpos = 0
-            args = list(args)
-            for name, param in func_signature.parameters.items():
-                if param.kind in [param.POSITIONAL_ONLY, param.POSITIONAL_OR_KEYWORD]:
-                    if name not in kwargs:
-                        if len(args) > kpos:
-                            kwargs[name] = args[kpos]
-                            del args[kpos]
-                else:
-                    kpos += 1
-            args = tuple(args)
-
-            # print(f"Before calling {func.__name__}")
-            result = func(*args, **kwargs)
-            # print(f"After calling {func.__name__}")
-
-            if TorchTensor is not None:
-                if isinstance(result, TorchTensor):
-                    ref = TensorRef(result, tensorsManager)
-                    ref.toCPU()
-                    return ref
-
-            return result
-        '''
-
         def funWrapper(*args, **kwargs):
+            
+            if ignore:
+                return None
+
             args = list(args)
 
             refs = []
@@ -157,9 +126,6 @@ def wrapModule(mod):
     except:
         pass
 
-    #if wrappedVars == len(vars):
-    #    return mod
-
     name = ''
     try:
         name = mod.__module__ + '.'
@@ -168,10 +134,11 @@ def wrapModule(mod):
 
     name += mod.__name__
 
-    try:
-        return cachedModules[name]
-    except:
-        pass
+    if wrappedVars == len(vars):
+        try:
+            return cachedModules[name]
+        except:
+            pass
 
     def trySet(name, attr):
         try:

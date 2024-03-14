@@ -35,16 +35,24 @@ class TensorRef(ABC):
 
             def ignore(*args, **kwargs):
                 dev = None
+
                 if len(args) > 0:
                     dev = args[0]
 
                 if isinstance(dev, str):
                     self.proxyInfo.device = dev
-                else:
+                elif dev is not None or kwargs:
                     self.target = attr(*args, **kwargs)
                 return self
 
             return ignore
+
+        # Hole-fillers
+        if attr is None:
+            if name == 'detach':
+                def stillMe():
+                    return self
+                return stillMe
 
         if callable(attr):
             # If the original attribute is callable, we return a new wrapper function
@@ -92,19 +100,21 @@ class TensorRef(ABC):
             return attr
 
     def toGPU(self):
-        if self.target.is_cpu:
-            dev = self.proxyInfo.tensorsManager.device
-            if dev is not None and dev != "cpu":
-                res = self.target.to(dev)
-                if isinstance(self.target, torch.nn.Parameter) and not isinstance(res, torch.nn.Parameter):
-                    res = torch.nn.Parameter(res)
-                self.target = res
+        if isinstance(self.target, Tensor):
+            if self.target.is_cpu:
+                dev = self.proxyInfo.tensorsManager.device
+                if dev is not None and dev != "cpu":
+                    res = self.target.to(dev)
+                    if isinstance(self.target, torch.nn.Parameter) and not isinstance(res, torch.nn.Parameter):
+                        res = torch.nn.Parameter(res)
+                    self.target = res
 
         return self.target
 
     def toCPU(self):
-        if not self.target.is_cpu:
-            self.target = self.target.to("cpu")
+        if isinstance(self.target, Tensor):
+            if not self.target.is_cpu:
+                self.target = self.target.to("cpu")
 
         return self.target
 
@@ -129,7 +139,7 @@ TensorRef.register(torch.nn.Parameter)
 # Create math operation magic functions
 ops = ["add", "sub", "truediv", "floordiv", "mul", "mod", "divmod", "pow", "and", "or", "lshift", "rshift", "xor"]
 
-def applyMagicMethod_math(op):
+def applyMagicMethod_math(op, dev=''):
     op = "__" + op + "__"
 
     try:
@@ -167,14 +177,14 @@ def applyMagicMethod_math(op):
 
                 return res
 
-            setattr(TensorRef, op, mathWrapper)
+            setattr(TensorRef, dev+op, mathWrapper)
     except:
         ignore = True
 
 for op in ops:
     applyMagicMethod_math(op)
-    applyMagicMethod_math("r" + op)
-    applyMagicMethod_math("i" + op)
+    applyMagicMethod_math(op, 'r')
+    applyMagicMethod_math(op, 'i')
 
 # Generic magic proxy functions
 magics = dir(Tensor)
