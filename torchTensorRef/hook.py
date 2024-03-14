@@ -1,5 +1,5 @@
 
-def Hooks():
+class Hooks:
     def module_register_parameter(self, name, param):
         self._parameters[name] = param
 
