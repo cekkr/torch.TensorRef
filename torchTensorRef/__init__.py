@@ -8,10 +8,32 @@ import types
 
 from .hook import Hooks
 
+torch = None
+
 def is_builtin_type(obj):
     builtin_types = (int, float, str, list, dict, tuple, set, bool, bytes)
     return isinstance(obj, builtin_types) or type(obj) in vars(types).values()
 
+def tryHook(self, name, attr, hook):
+    if attr.__name__ != hook.__name__:
+        setattr(self, name, attr)
+
+def checkSelf(self):
+    if torch is not None:
+        t = type(self)
+        if issubclass(t, torch.nn.Module):
+            if '__wrapped_nn_module' not in self.__dict__:
+                methods = ['register_parameter', 'register_buffer']
+                for m in methods:
+                    try:
+                        attr = getattr(self, m)      
+                        if m == 'register_parameter':
+                            tryHook(self, m, attr, Hooks.module_register_parameter)
+                        if m == 'register_buffer':
+                            tryHook(self, m, attr, Hooks.module_register_buffer)
+                    except:
+                        pass
+                self.__dict__['__wrapped_nn_module'] = True
 
 ###
 ### Import hook (ugly solutions for lazy people)
@@ -55,6 +77,7 @@ def method_wrapper(func):
             refs = []
             for a in range(0, len(args)):
                 arg = args[a]
+                checkSelf(arg)
                 if TensorRef is not None:
                     if isinstance(arg, TorchTensor):
                         args[a] = TensorRef(arg, tensorsManager)

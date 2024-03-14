@@ -3,31 +3,9 @@ from torch import Tensor
 from abc import ABC
 from functools import partial
 
-from .hook import Hooks
-
 class ProxyInfo:
     def __init__(self):
         self.device = "cpu"
-
-def tryHook(self, name, attr, hook):
-    if attr.__name__ != hook.__name__:
-        setattr(self, name, attr)
-
-def checkSelf(self):
-    t = type(self)
-    if issubclass(t, torch.nn.Module):
-        if '__wrapped_nn_module' not in self.__dict__:
-            methods = ['register_parameter', 'register_buffer']
-            for m in methods:
-                try:
-                    attr = getattr(self, m)      
-                    if m == 'register_parameter':
-                        tryHook(self, m, attr, Hooks.module_register_parameter)
-                    if m == 'register_buffer':
-                        tryHook(self, m, attr, Hooks.module_register_buffer)
-                except:
-                    pass
-            self.__dict__['__wrapped_nn_module'] = True
 
 class TensorRef(ABC):
 
@@ -49,8 +27,6 @@ class TensorRef(ABC):
             except:
                 if name == "target":
                     return self
-
-        checkSelf(self)
 
         # Delegate attribute access to the target object
         attr = getattr(self.target, name)
@@ -171,8 +147,6 @@ def applyMagicMethod_math(op, dev=''):
         if method is not None:
 
             def mathWrapper(self, other):
-                checkSelf(self)
-
                 self.toGPU()
                 res = None
                 withBaseTensor = False
@@ -237,7 +211,6 @@ def createMagicWrapper(m):
         def makeWrapper(m, magic):
             def magicWrapper(*args, **kwargs):
                 self, *args = args
-                checkSelf(self)
 
                 ref = None
                 if isinstance(self, TensorRef):
