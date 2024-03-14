@@ -188,10 +188,12 @@ for op in ops:
 
 # Generic magic proxy functions
 magics = dir(Tensor)
+magicsAttr = {}
 for m in magics:
     if m.startswith('__'):
         try:
             magic = getattr(Tensor, m)
+            magicsAttr[m] = magic
 
             magicRef = None
             try:
@@ -202,8 +204,19 @@ for m in magics:
             if magicRef is None:
                 def magicWrapper(*args, **kwargs):
                     self, *args = args
-                    self = self.target
-                    return magic(self, *args, **kwargs)
+                    ref = self
+                    self = ref.toGPU()
+                    try:
+                        res = magic(self, *args, **kwargs)
+                        ref.toCPU()
+                        return TensorRef(res, ref.proxyInfo.tensorsManager)
+                    except Exception as err:
+                        msg = list(err.args)[0]
+                        if 'not implemented' in msg:
+                            if 'Float' in msg:
+                                ref.to(torch.int)
+                                return magicWrapper(ref, *args, **kwargs)
+                        raise err
                 setattr(TensorRef, m, magicWrapper)
 
         except Exception as err:
