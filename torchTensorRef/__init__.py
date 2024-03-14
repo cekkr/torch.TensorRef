@@ -347,6 +347,12 @@ def noisy_importer(
             return fun
         res.__dict__['_add_docstr'] = funIgnore
 
+    if name == 'torch.overrides':
+        # temp solution
+        def funAlwaysTrue(*args, **kwargs):
+            return True
+        res.__dict__['is_tensor_like'] = funAlwaysTrue
+
     return res
 
 
