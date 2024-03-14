@@ -14,7 +14,8 @@ def tryHook(self, name, attr, hook):
         setattr(self, name, attr)
 
 def checkSelf(self):
-    if issubclass(self, torch.nn.Module):
+    t = type(self)
+    if issubclass(t, torch.nn.Module):
         if '__wrapped_nn_module' not in self.__dict__:
             methods = ['register_parameter', 'register_buffer']
             for m in methods:
