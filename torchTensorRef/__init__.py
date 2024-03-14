@@ -169,12 +169,24 @@ def wrapModule(mod):
         except:
             setattr(mod, name, attr)
 
+    def tryHook(name, attr, hook):
+        if attr.__name__ != hook.__name__:
+            trySet(name, hook)
+
     for v in vars:
         if v.startswith('__'):
             continue        
 
         try:
-            attr = getattr(mod, v)            
+            attr = getattr(mod, v)
+
+            if name.startswith('torch.nn.modules'):
+                if v == 'register_parameter':
+                    tryHook(v, attr, Hooks.module_register_parameter)
+                    attr = Hooks.module_register_parameter
+                if v == 'register_buffer':
+                    tryHook(v, attr, Hooks.module_register_buffer)
+                    attr = Hooks.module_register_buffer
 
             if inspect.isclass(attr) or inspect.ismodule(attr):
                 if startsWith(attr.__module__+'.'+attr.__name__, injectTo) and not startsWith(attr.__module__+'.'+attr.__name__, exclude):
