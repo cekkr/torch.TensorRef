@@ -8,8 +8,6 @@ import types
 
 from .hook import Hooks
 
-torch = None
-
 def is_builtin_type(obj):
     builtin_types = (int, float, str, list, dict, tuple, set, bool, bytes)
     return isinstance(obj, builtin_types) or type(obj) in vars(types).values()
@@ -148,23 +146,12 @@ def wrapModule(mod):
         except:
             setattr(mod, name, attr)
 
-    def tryHook(name, attr, hook):
-        if attr.__name__ != hook.__name__:
-            trySet(name, hook)
-
     for v in vars:
         if v.startswith('__'):
             continue        
 
         try:
-            attr = getattr(mod, v)
-
-            if torch is not None: # not working
-                if issubclass(mod, torch.nn.Module):
-                    if v == 'register_parameter':
-                        tryHook(v, attr, Hooks.module_register_parameter)
-                    if v == 'register_buffer':
-                        tryHook(v, attr, Hooks.module_register_buffer)
+            attr = getattr(mod, v)            
 
             if inspect.isclass(attr) or inspect.ismodule(attr):
                 if startsWith(attr.__module__+'.'+attr.__name__, injectTo) and not startsWith(attr.__module__+'.'+attr.__name__, exclude):
