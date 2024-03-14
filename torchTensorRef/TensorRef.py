@@ -62,6 +62,7 @@ class TensorRef(ABC):
 
                 # look for tensors on CPU
                 proxies = []
+                args = list(args)
                 for a in range(0, len(args)):
                     value = args[a]
                     if isinstance(value, Tensor):
@@ -69,6 +70,7 @@ class TensorRef(ABC):
                     if isinstance(value, TensorRef):
                         proxies.append(value)
                         args[a] = value.toGPU()
+                args = tuple(args)
 
                 for key, value in kwargs.items():
                     #print(f"{key}: {value}")
@@ -131,13 +133,17 @@ class TensorRef(ABC):
         return self.target.__str__(*args, **kwargs)
     
     def __getitem__(self, key):
-        return self.target.__getitem__(key)
+        res = self.target.__getitem__(key)
+        return res
 
 TensorRef.register(Tensor)
 TensorRef.register(torch.nn.Parameter)
 
 # Create math operation magic functions
-ops = ["add", "sub", "truediv", "floordiv", "mul", "mod", "divmod", "pow", "and", "or", "lshift", "rshift", "xor"]
+ops = [
+        "add", "sub", "truediv", "floordiv", "mul", "mod", "divmod", "pow", "and", "or", "lshift", "rshift", "xor",
+        "cmp", "eq", "nq", "ne", "lt", "gt", "le", "ge"
+    ]
 
 def applyMagicMethod_math(op, dev=''):
     op = "__" + op + "__"
@@ -171,11 +177,11 @@ def applyMagicMethod_math(op, dev=''):
                 if isinstance(other, TensorRef):
                     other.toCPU()
 
-                res = TensorRef(
-                    res, self.proxyInfo.tensorsManager
-                )
-
-                res.toCPU()
+                if isinstance(res, Tensor):
+                    res = TensorRef(
+                        res, self.proxyInfo.tensorsManager
+                    )
+                    res.toCPU()
 
                 cpu = self.toCPU()
 
