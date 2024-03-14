@@ -40,7 +40,9 @@ def checkSelf(self):
 ###
 
 injectTo = ['torch']
-exclude = ['torch.fx', 'torch.jit', 'torch.autograd', 'torchgen', 'torchTensorRef', 'torch.storage', 'functools', 'torch.utils', 'torch.library']
+exclude = ['torch.fx', 'torch.jit', 'torch.autograd', 'torchgen', 'torchTensorRef', 'torch.storage', 'functools', 'torch.utils', 'torch.library'
+           'torch._tensor', 'torch._C'
+           ]
 
 def startsWith(str, arr):
     for a in arr:
@@ -62,15 +64,8 @@ def method_wrapper(func):
 
     #func_signature = inspect.signature(func)
 
-    ignore = False
-    if name == 'torch._C._add_docstr':
-        ignore = True
-
     class classWrapper:
         def funWrapper(*args, **kwargs):
-
-            if ignore:
-                return None
 
             args = list(args)
 
@@ -333,6 +328,11 @@ def noisy_importer(
 
     if name == 'torch':
         torch = res
+
+    if name == 'torch._C':
+        def funIgnore(fun, *args, **kwargs):
+            return fun
+        res.__dict__['_add_docstr'] = funIgnore
 
     return res
 
