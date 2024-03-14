@@ -162,6 +162,13 @@ def applyMagicMethod_math(op, dev=''):
 
                 res = method(self.target, otherTarget)
 
+                if res is NotImplemented:
+                    if op == '__pow__':
+                        res = torch.pow(self.target, otherTarget)
+                        return res
+                    else:
+                        raise Exception("Not implemented")
+
                 if isinstance(other, TensorRef):
                     other.toCPU()
 
@@ -202,21 +209,30 @@ def createMagicWrapper(m):
         pass
 
     if magicRef is None:
-        def makeWrapper(magic):
+        def makeWrapper(m, magic):
             def magicWrapper(*args, **kwargs):
                 self, *args = args
-                ref = self
-                self = ref.toGPU()
+
+                ref = None
+                if isinstance(self, TensorRef):
+                    ref = self
+                    self = ref.toGPU()
 
                 try:
                     res = magic(self, *args, **kwargs)
-                    ref.toCPU()
+
+                    if res is NotImplemented:
+                        return getattr(TensorRef, '__'+m[3:])(ref, *args, **kwargs)
+
+                    if ref is not None:
+                        ref.toCPU()
+
                     return TensorRef(res, ref.proxyInfo.tensorsManager)
                 except Exception as err:
                     raise err
             return magicWrapper
 
-        setattr(TensorRef, m, makeWrapper(magic))
+        setattr(TensorRef, m, makeWrapper(m, magic))
 
 for m in magics:
     if m.startswith('__'):
