@@ -114,7 +114,7 @@ class TensorRef(ABC):
             if self.target.is_cpu:
                 dev = self.proxyInfo.tensorsManager.device
                 if dev is not None and dev != "cpu":
-                    res = self.target.to(device=dev, dtype=self.target.dtype)
+                    res = self.target.to(device=dev,)
                     if isinstance(self.target, torch.nn.Parameter) and not isinstance(res, torch.nn.Parameter):
                         res = torch.nn.Parameter(res)
                     self.target = res
@@ -124,7 +124,7 @@ class TensorRef(ABC):
     def toCPU(self):
         if isinstance(self.target, Tensor):
             if not self.target.is_cpu:
-                self.target = self.target.to(device="cpu", dtype=self.target.dtype)
+                self.target = self.target.to(device="cpu")
                 self.target = self.target.to(torch.get_default_dtype()) # ensure Tensor default type
 
         return self.target
@@ -145,8 +145,8 @@ class TensorRef(ABC):
         res = self.target.__getitem__(key)
         return res
 
-TensorRef.register(Tensor)
-TensorRef.register(torch.nn.Parameter)
+#TensorRef.register(Tensor)
+#TensorRef.register(torch.nn.Parameter)
 
 # Create math operation magic functions
 ops = [
@@ -216,8 +216,7 @@ def createMagicWrapper(m):
     magic = getattr(Tensor, m)
     magicsAttr[m] = magic
 
-    if m == '__torch_function__':
-        return magic
+    isTorchFun = m == '__torch_function__'
 
     magicRef = None
     try:
@@ -235,6 +234,37 @@ def createMagicWrapper(m):
                     if isinstance(args[a], TensorRef):
                         refs.append(args[a])
                         args[a] = args[a].toGPU()
+
+                # What an ugly thing...
+                if isTorchFun:
+                    fun = args[1]
+                    types = args[2]
+                    tup = args[3]
+                    tens = args[0]
+
+                    types = list(types)
+                    for t in range(0, len(types)):
+                        if types[t] == TensorRef:
+                            types[t] = Tensor
+                    types = tuple(types)
+
+                    tup = list(tup)
+                    defTensMan = None
+                    for t in range(0, len(tup)):
+                        if isinstance(tup[t], Tensor):
+                            tup[t] = TensorRef(tup[t],defTensMan)
+                        if isinstance(tup[t], TensorRef):
+                            defTensMan = tup[t].proxyInfo.tensorsManager
+                            tup[t] = tup[t].toGPU()
+                    tup = tuple(tup)
+
+                    args[0] = fun
+                    args[1] = types
+                    args[2] = tup
+                    #args[3] = tens
+                    del args[3]
+
+                args = tuple(args)
 
                 try:
                     res = magic(*args, **kwargs)

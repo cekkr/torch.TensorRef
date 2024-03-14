@@ -44,7 +44,7 @@ exclude = [
             'torch.fx', 'torch.jit', 'torch.autograd', 'torchgen', 'torch.storage', 'functools', 'torch.utils', 'torch.library',
             'torchTensorRef',
             #'torch._tensor', 'torch._C'
-            #'torch._'
+            'torch._'
            ]
 
 def startsWith(str, arr):
@@ -227,6 +227,16 @@ def wrapModule(mod):
 old_import = __import__
 
 importCache = {}
+importToWrap = []
+firstWrapping = True
+
+def flushWrap():
+    global importToWrap
+    global firstWrapping
+    for mod in importToWrap:
+        wrapModule(mod)
+    importToWrap = []
+    firstWrapping = False
 
 def noisy_importer(
     name,
@@ -330,9 +340,14 @@ def noisy_importer(
 
     if (startsWith(name, injectTo) or (name.startswith('.') and inside != None and startsWith(inside, injectTo))) and not startsWith(name, exclude):
         res = defaultImport(name, locals, globals, fromlist, level)
-        if '__alreadyOnWrap' not in res.__dict__:
-            res.__dict__['__alreadyOnWrap'] = True
+        if firstWrapping:
+            importToWrap.append(res)
+        else:
             res = wrapModule(res)
+
+        #if '__alreadyOnWrap' not in res.__dict__:
+        #    res.__dict__['__alreadyOnWrap'] = True
+        #    res = wrapModule(res)
     else:
         try:
             res = defaultImport(name, locals, globals, fromlist, level)
@@ -375,6 +390,8 @@ builtins.__import__ = noisy_importer
 
 import torch
 from torch import Tensor as TorchTensor
+
+flushWrap()
 
 from .TensorRef import TensorRef
 from .TensorsManager import TensorsManager
