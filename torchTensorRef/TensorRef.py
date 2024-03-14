@@ -1,6 +1,7 @@
 import torch
 from torch import Tensor
 from abc import ABC
+from functools import partial
 
 class ProxyInfo:
     def __init__(self):
@@ -189,35 +190,37 @@ for op in ops:
 # Generic magic proxy functions
 magics = dir(Tensor)
 magicsAttr = {}
+
+def createMagicWrapper(m):
+    magic = getattr(Tensor, m)
+    magicsAttr[m] = magic
+
+    magicRef = None
+    try:
+        magicRef = getattr(TensorRef, m)
+    except:
+        pass
+
+    if magicRef is None:
+        def makeWrapper(magic):
+            def magicWrapper(*args, **kwargs):
+                self, *args = args
+                ref = self
+                self = ref.toGPU()
+
+                try:
+                    res = magic(self, *args, **kwargs)
+                    ref.toCPU()
+                    return TensorRef(res, ref.proxyInfo.tensorsManager)
+                except Exception as err:
+                    raise err
+            return magicWrapper
+
+        setattr(TensorRef, m, makeWrapper(magic))
+
 for m in magics:
     if m.startswith('__'):
         try:
-            magic = getattr(Tensor, m)
-            magicsAttr[m] = magic
-
-            magicRef = None
-            try:
-                magicRef = getattr(TensorRef, m)
-            except:
-                ignore = True
-
-            if magicRef is None:
-                def magicWrapper(*args, **kwargs):
-                    self, *args = args
-                    ref = self
-                    self = ref.toGPU()
-                    try:
-                        res = magic(self, *args, **kwargs)
-                        ref.toCPU()
-                        return TensorRef(res, ref.proxyInfo.tensorsManager)
-                    except Exception as err:
-                        msg = list(err.args)[0]
-                        if 'not implemented' in msg:
-                            if 'Float' in msg:
-                                ref.to(torch.int)
-                                return magicWrapper(ref, *args, **kwargs)
-                        raise err
-                setattr(TensorRef, m, magicWrapper)
-
+            createMagicWrapper(m)
         except Exception as err:
-            ignore = True
+            pass
