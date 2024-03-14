@@ -95,6 +95,7 @@ def method_wrapper(func):
                             else:
                                 args[a] = args[a].target
                     else:
+                        # https://github.com/huggingface/accelerate/blob/main/src/accelerate/big_modeling.py
                         if isinstance(args[a], TensorRef):
                             args[a] = None
             args = tuple(args)
