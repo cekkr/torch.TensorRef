@@ -40,9 +40,9 @@ class TensorRef(ABC):
 
                 if isinstance(dev, str):
                     self.proxyInfo.device = dev
-                    return self
                 else:
-                    return attr(*args, **kwargs)
+                    self.target = attr(*args, **kwargs)
+                return self
 
             return ignore
 
@@ -149,7 +149,7 @@ def applyMagicMethod_math(op):
                 if isinstance(other, TensorRef):
                     otherTarget = other.toGPU()
 
-                res = method(self.target, other.target)
+                res = method(self.target, otherTarget)
 
                 if isinstance(other, TensorRef):
                     other.toCPU()

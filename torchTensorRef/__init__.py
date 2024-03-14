@@ -18,7 +18,7 @@ def is_builtin_type(obj):
 ###
 
 injectTo = ['torch']
-exclude = ['torch.fx', 'torch.jit', 'torch._', 'torch.autograd', 'torchgen', 'torchTensorRef', 'torch.storage', 'functools', 'torch.utils', 'torch.library']
+exclude = ['torch.fx', 'torch.jit', 'torch.autograd', 'torchgen', 'torchTensorRef', 'torch.storage', 'functools', 'torch.utils', 'torch.library']
 
 def startsWith(str, arr):
     for a in arr:
@@ -36,7 +36,7 @@ def method_wrapper(func):
     if name.startswith('torch.nn.modules'):
         passAsRef = True
 
-    print(name)
+    #print(name)
 
     func_signature = inspect.signature(func)
 
@@ -139,6 +139,7 @@ def method_wrapper(func):
 TensorRef = None
 TorchTensor = None
 
+cachedModules = {}
 def wrapModule(mod):
     if startsWith(mod.__name__, exclude):
         return mod
@@ -156,8 +157,8 @@ def wrapModule(mod):
     except:
         pass
 
-    if wrappedVars == len(vars):
-        return mod
+    #if wrappedVars == len(vars):
+    #    return mod
 
     name = ''
     try:
@@ -166,6 +167,11 @@ def wrapModule(mod):
         pass
 
     name += mod.__name__
+
+    try:
+        return cachedModules[name]
+    except:
+        pass
 
     def trySet(name, attr):
         try:
@@ -209,6 +215,7 @@ def wrapModule(mod):
         except Exception as err:
             ignore = True
 
+    cachedModules[name] = mod
     return mod
 
 
