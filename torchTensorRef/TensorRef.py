@@ -226,7 +226,11 @@ def createMagicWrapper(m):
                     if ref is not None:
                         ref.toCPU()
 
-                    return TensorRef(res, ref.proxyInfo.tensorsManager)
+                    if isinstance(res, Tensor):
+                        res = TensorRef(res, ref.proxyInfo.tensorsManager)
+                        res.toCPU()
+
+                    return res
                 except Exception as err:
                     raise err
             return magicWrapper
