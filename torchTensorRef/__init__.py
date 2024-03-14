@@ -40,9 +40,11 @@ def checkSelf(self):
 ###
 
 injectTo = ['torch']
-exclude = ['torch.fx', 'torch.jit', 'torch.autograd', 'torchgen', 'torchTensorRef', 'torch.storage', 'functools', 'torch.utils', 'torch.library'
-           #'torch._tensor', 'torch._C'
-           #'torch._'
+exclude = [
+            #'torch.fx', 'torch.jit', 'torch.autograd', 'torchgen', 'torch.storage', 'functools', 'torch.utils', 'torch.library'
+            'torchTensorRef',
+            #'torch._tensor', 'torch._C'
+            'torch._'
            ]
 
 def startsWith(str, arr):
