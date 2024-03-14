@@ -285,6 +285,7 @@ def noisy_importer(
 
     #TODO: check if originalImport is really useful
     originalImport = None
+    '''
     try:
         originalImport = globals['__import__']
     except:
@@ -322,13 +323,15 @@ def noisy_importer(
             defaultImport = originalImport.__dict__['original']
         except:
             ignore = True
+    '''
 
     #if name.startswith('torch.nn'):
     #    print("check")
 
     if (startsWith(name, injectTo) or (name.startswith('.') and inside != None and startsWith(inside, injectTo))) and not startsWith(name, exclude):
         res = defaultImport(name, locals, globals, fromlist, level)
-        if name != 'builtins': # still necessary?
+        if '__alreadyOnWrap' not in res.__dict__:
+            res.__dict__['__alreadyOnWrap'] = True
             res = wrapModule(res)
     else:
         try:

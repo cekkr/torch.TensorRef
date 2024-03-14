@@ -70,6 +70,14 @@ class TensorRef(ABC):
                     if isinstance(value, TensorRef):
                         proxies.append(value)
                         args[a] = value.toGPU()
+
+                    if name == '__torch_function__':
+                        if args[a] is tuple:
+                            types = list(args[a])
+                            for t in range(0, len(types)):
+                                if types[t] is TensorRef:
+                                    types[t] = Tensor
+                            args[a] = tuple(types)
                 args = tuple(args)
 
                 for key, value in kwargs.items():
