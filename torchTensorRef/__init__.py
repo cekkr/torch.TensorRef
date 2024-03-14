@@ -16,7 +16,7 @@ def is_builtin_type(obj):
 
 def tryHook(self, name, attr, hook):
     if attr.__name__ != hook.__name__:
-        setattr(self, name, attr)
+        setattr(self, name, hook)
 
 def checkSelf(self):
     if torch is not None:
@@ -31,7 +31,7 @@ def checkSelf(self):
                             tryHook(self, m, attr, Hooks.module_register_parameter)
                         if m == 'register_buffer':
                             tryHook(self, m, attr, Hooks.module_register_buffer)
-                    except:
+                    except Exception as err:
                         pass
                 self.__dict__['__wrapped_nn_module'] = True
 
