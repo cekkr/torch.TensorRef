@@ -8,6 +8,8 @@ import types
 
 from .hook import Hooks
 
+torch = None
+
 def is_builtin_type(obj):
     builtin_types = (int, float, str, list, dict, tuple, set, bool, bytes)
     return isinstance(obj, builtin_types) or type(obj) in vars(types).values()
@@ -46,7 +48,7 @@ def method_wrapper(func):
 
     class classWrapper:
         def funWrapper(*args, **kwargs):
-            
+
             if ignore:
                 return None
 
@@ -157,11 +159,12 @@ def wrapModule(mod):
         try:
             attr = getattr(mod, v)
 
-            if name.startswith('torch.nn.modules'):
-                if v == 'register_parameter':
-                    tryHook(v, attr, Hooks.module_register_parameter)
-                if v == 'register_buffer':
-                    tryHook(v, attr, Hooks.module_register_buffer)
+            if torch is not None: # not working
+                if issubclass(mod, torch.nn.Module):
+                    if v == 'register_parameter':
+                        tryHook(v, attr, Hooks.module_register_parameter)
+                    if v == 'register_buffer':
+                        tryHook(v, attr, Hooks.module_register_buffer)
 
             if inspect.isclass(attr) or inspect.ismodule(attr):
                 if startsWith(attr.__module__+'.'+attr.__name__, injectTo) and not startsWith(attr.__module__+'.'+attr.__name__, exclude):
@@ -305,6 +308,9 @@ def noisy_importer(
     else:
         importCache[name] = res
     '''
+
+    if name == 'torch':
+        torch = res
 
     return res
 
