@@ -6,6 +6,8 @@ import inspect
 # import copy
 import types
 
+from .hook import Hooks
+
 def is_builtin_type(obj):
     builtin_types = (int, float, str, list, dict, tuple, set, bool, bytes)
     return isinstance(obj, builtin_types) or type(obj) in vars(types).values()
@@ -30,10 +32,8 @@ def method_wrapper(func):
     if func in itsMe or startsWith(name, exclude) or not startsWith(name, injectTo):
         return func
 
-    ignoreGPU = False
     passAsRef = False
-    if name == 'torch.nn.modules.module.register_parameter':
-        ignoreGPU = True
+    if name.startswith('torch.nn.modules'):
         passAsRef = True
 
     print(name)
@@ -43,6 +43,7 @@ def method_wrapper(func):
     class classWrapper:
 
         def __new__(cls, *args, **kwargs):
+            '''
             args = list(args)
             for a in range(0, len(args)):
                 arg = args[a]
@@ -77,6 +78,7 @@ def method_wrapper(func):
                     return ref
 
             return result
+        '''
 
         def funWrapper(*args, **kwargs):
             args = list(args)
@@ -89,15 +91,14 @@ def method_wrapper(func):
                         args[a] = TensorRef(arg, tensorsManager)
                     if not passAsRef:
                         if isinstance(args[a], TensorRef):
-                            if not ignoreGPU:
-                                refs.append(args[a])
-                                args[a] = args[a].toGPU()
-                            else:
-                                args[a] = args[a].target
+                            refs.append(args[a])
+                            args[a] = args[a].toGPU()
+                    '''
                     else:
                         # https://github.com/huggingface/accelerate/blob/main/src/accelerate/big_modeling.py
                         if isinstance(args[a], TensorRef):
                             args[a] = None
+                    '''
             args = tuple(args)
 
             # print(f"Before calling {func.__name__}")
@@ -120,7 +121,7 @@ def method_wrapper(func):
     try:
         wrapModule(func)
     except Exception as err:
-        ignore = True
+        pass
 
 
     vars = dir(func)
@@ -130,7 +131,7 @@ def method_wrapper(func):
                 attr = getattr(func, v)
                 setattr(wrapper, v, attr)
             except:
-                ignore = True
+                pass
 
     itsMe.append(wrapper)
     return wrapper
@@ -146,17 +147,25 @@ def wrapModule(mod):
     try:
         wrappedVars = mod.__dict__['__wrapped']
     except:
-        ignore = True
+        pass
 
     vars = dir(mod)
 
     try:
         mod.__dict__['__wrapped'] = len(vars)
     except:
-        ignore = True
+        pass
 
     if wrappedVars == len(vars):
         return mod
+
+    name = ''
+    try:
+        name = mod.__module__ + '.'
+    except:
+        pass
+
+    name += mod.__name__
 
     def trySet(name, attr):
         try:
@@ -164,14 +173,23 @@ def wrapModule(mod):
         except:
             setattr(mod, name, attr)
 
+    def tryHook(name, attr, hook):
+        if attr.__name__ != hook.__name__:
+            trySet(name, hook)
+
     for v in vars:
         if v.startswith('__'):
-            continue
+            continue        
 
         try:
             attr = getattr(mod, v)
 
-            #TODO: try to invert the conditions?
+            if name.startswith('torch.nn.modules'):
+                if v == 'register_parameter':
+                    tryHook(v, attr, Hooks.module_register_parameter)
+                if v == 'register_buffer':
+                    tryHook(v, attr, Hooks.module_register_buffer)
+
             if inspect.isclass(attr) or inspect.ismodule(attr):
                 if startsWith(attr.__module__+'.'+attr.__name__, injectTo) and not startsWith(attr.__module__+'.'+attr.__name__, exclude):
                     wr = wrapModule(attr)
