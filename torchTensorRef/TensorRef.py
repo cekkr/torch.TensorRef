@@ -1,13 +1,13 @@
 import torch
 from torch import Tensor
-
+from abc import ABC
 
 class ProxyInfo:
     def __init__(self):
         self.device = "cpu"
 
 
-class TensorRef():
+class TensorRef(ABC):
 
     def __init__(self, target, tensorsManager):
         setattr(self, "target", target)
@@ -56,12 +56,16 @@ class TensorRef():
                 proxies = []
                 for a in range(0, len(args)):
                     value = args[a]
+                    if isinstance(value, Tensor):
+                        value = TensorRef(value, self.proxyManager.tensorsManager)
                     if isinstance(value, TensorRef):
                         proxies.append(value)
                         args[a] = value.toGPU()
 
                 for key, value in kwargs.items():
-                    print(f"{key}: {value}")
+                    #print(f"{key}: {value}")
+                    if isinstance(value, Tensor):
+                        value = TensorRef(value, self.proxyManager.tensorsManager)
                     if isinstance(value, TensorRef):
                         proxies.append(value)
                         kwargs[key] = value.toGPU()
@@ -115,6 +119,8 @@ class TensorRef():
     
     def __getitem__(self, key):
         return self.target.__getitem__(key)
+
+TensorRef.register(Tensor)
 
 # Create math operation magic functions
 ops = ["add", "sub", "truediv", "floordiv", "mul", "mod", "divmod", "pow", "and", "or", "lshift", "rshift", "xor"]

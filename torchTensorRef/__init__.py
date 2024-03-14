@@ -80,6 +80,9 @@ def method_wrapper(func):
             for a in range(0, len(args)):
                 arg = args[a]
                 if TensorRef is not None:
+                    if isinstance(arg, TorchTensor):
+                        args[a] = TorchTensor(arg, tensorsManager)
+
                     if isinstance(arg, TensorRef):
                         args[a] = arg.toGPU()
             args = tuple(args)
@@ -113,8 +116,10 @@ def method_wrapper(func):
             for a in range(0, len(args)):
                 arg = args[a]
                 if TensorRef is not None:
-                    if isinstance(arg, TensorRef):
-                        args[a] = arg.toGPU()
+                    if isinstance(arg, TorchTensor):
+                        args[a] = TensorRef(arg, tensorsManager)
+                    if isinstance(args[a], TensorRef):
+                        args[a].toGPU()
             args = tuple(args)
 
             if False: #kwargs checker
