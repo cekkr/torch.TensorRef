@@ -3,6 +3,8 @@ from torch import Tensor
 from abc import ABC
 from functools import partial
 
+from .common import tensorsManager
+
 class ProxyInfo:
     def __init__(self):
         self.device = "cpu"
@@ -114,7 +116,10 @@ class TensorRef(ABC):
             if self.target.is_cpu:
                 dev = self.proxyInfo.tensorsManager.device
                 if dev is not None and dev != "cpu":
-                    res = self.target.to(device=dev,)
+                    dt = self.target.dtype
+                    if dt is torch.float64:
+                        dt = torch.float32
+                    res = self.target.to(device=dev, dtype=dt)
                     if isinstance(self.target, torch.nn.Parameter) and not isinstance(res, torch.nn.Parameter):
                         res = torch.nn.Parameter(res)
                     self.target = res
@@ -125,7 +130,7 @@ class TensorRef(ABC):
         if isinstance(self.target, Tensor):
             if not self.target.is_cpu:
                 self.target = self.target.to(device="cpu")
-                self.target = self.target.to(torch.get_default_dtype()) # ensure Tensor default type
+                #self.target = self.target.to(torch.get_default_dtype()) # ensure Tensor default type
 
         return self.target
 
@@ -240,7 +245,7 @@ def createMagicWrapper(m):
                     fun = args[1]
                     types = args[2]
                     tup = args[3]
-                    tens = args[0]
+                    #tensor = args[0]
 
                     types = list(types)
                     for t in range(0, len(types)):
@@ -249,19 +254,16 @@ def createMagicWrapper(m):
                     types = tuple(types)
 
                     tup = list(tup)
-                    defTensMan = None
                     for t in range(0, len(tup)):
                         if isinstance(tup[t], Tensor):
-                            tup[t] = TensorRef(tup[t],defTensMan)
+                            tup[t] = TensorRef(tup[t],tensorsManager)
                         if isinstance(tup[t], TensorRef):
-                            defTensMan = tup[t].proxyInfo.tensorsManager
                             tup[t] = tup[t].toGPU()
                     tup = tuple(tup)
 
                     args[0] = fun
                     args[1] = types
                     args[2] = tup
-                    #args[3] = tens
                     del args[3]
 
                 args = tuple(args)

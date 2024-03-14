@@ -394,8 +394,6 @@ from torch import Tensor as TorchTensor
 flushWrap()
 
 from .TensorRef import TensorRef
-from .TensorsManager import TensorsManager
-
-tensorsManager = TensorsManager()
+from .common import tensorsManager
 
 print("torch.TensorRef injected.")
