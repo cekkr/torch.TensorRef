@@ -90,7 +90,7 @@ class TensorRef():
     def toGPU(self):
         if self.target.is_cpu:
             dev = self.proxyInfo.tensorsManager.device
-            if dev is not None and dev is not "cpu":
+            if dev is not None and dev != "cpu":
                 self.target = self.target.to(dev)
 
         return self.target
@@ -112,6 +112,9 @@ class TensorRef():
 
     def __str__(self, *args, **kwargs):
         return self.target.__str__(*args, **kwargs)
+    
+    def __getitem__(self, key):
+        return self.target.__getitem__(key)
 
 # Create math operation magic functions
 ops = ["add", "sub", "truediv", "floordiv", "mul", "mod", "divmod", "pow", "and", "or", "lshift", "rshift", "xor"]
@@ -131,12 +134,15 @@ def applyMagicMethod_math(op):
                     #res = method(self.target, other)
                     other = TensorRef(other, self.proxyInfo.tensorsManager)
                     withBaseTensor = True
-                elif isinstance(other, TensorRef):
-                    other.toGPU()
-                    res = method(self.target, other.target)
+
+                otherTarget = other
+                if isinstance(other, TensorRef):
+                    otherTarget = other.toGPU()
+
+                res = method(self.target, other.target)
+
+                if isinstance(other, TensorRef):
                     other.toCPU()
-                else:
-                    raise TypeError("Unsupported type for math operation")
 
                 res = TensorRef(
                     res, self.proxyInfo.tensorsManager

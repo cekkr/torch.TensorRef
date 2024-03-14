@@ -16,27 +16,45 @@ def is_builtin_type(obj):
 ###
 
 injectTo = ['torch']
-exclude = ['torch._tensor']
+exclude = ['torch.fx', 'torch.jit', 'torch._', 'torch.autograd', 'torchgen', 'torchTensorRef', 'torch.storage', 'functools', 'torch.utils', 'torch.library']
 
 def startsWith(str, arr):
     for a in arr:
-        if str.startswith(a):
+        if str.startswith(a): # or str.endswith(a):
             return True 
     return False
     
-
+itsMe = []
 def method_wrapper(func):
-    if func.__name__ is 'wrapper':
+    if func in itsMe or startsWith(func.__module__+'.'+func.__name__, exclude) or not startsWith(func.__module__+'.'+func.__name__, injectTo):
         return func
 
-    class wrapper:
-        def __new__(cls, *args, **kwargs):
+    print(func.__module__+'.'+func.__name__)
+
+    func_signature = inspect.signature(func)
+
+    '''
+    wrapper = None
+    if isinstance(func, (types.MethodType, types.BuiltinMethodType, types.FunctionType)):
+        def defWrapper(*args, **kwargs):
             args = list(args)
             for a in range(0, len(args)):
                 arg = args[a]
                 if TensorRef is not None:
                     if isinstance(arg, TensorRef):
                         args[a] = arg.toGPU()
+            args = tuple(args)
+
+            kpos = 0
+            args = list(args)
+            for name, param in func_signature.parameters.items():
+                if param.kind in [param.POSITIONAL_ONLY, param.POSITIONAL_OR_KEYWORD]:
+                    if name not in kwargs:
+                        if len(args) > kpos:
+                            kwargs[name] = args[kpos]
+                            del args[kpos]
+                else:
+                    kpos += 1
             args = tuple(args)
 
             # print(f"Before calling {func.__name__}")
@@ -51,7 +69,80 @@ def method_wrapper(func):
 
             return result
 
-    
+        wrapper = defWrapper
+    else:
+    '''
+
+    class classWrapper:
+
+        def __new__(cls, *args, **kwargs):
+            args = list(args)
+            for a in range(0, len(args)):
+                arg = args[a]
+                if TensorRef is not None:
+                    if isinstance(arg, TensorRef):
+                        args[a] = arg.toGPU()
+            args = tuple(args)
+
+            kpos = 0
+            args = list(args)
+            for name, param in func_signature.parameters.items():
+                if param.kind in [param.POSITIONAL_ONLY, param.POSITIONAL_OR_KEYWORD]:
+                    if name not in kwargs:
+                        if len(args) > kpos:
+                            kwargs[name] = args[kpos]
+                            del args[kpos]
+                else:
+                    kpos += 1
+            args = tuple(args)
+
+            # print(f"Before calling {func.__name__}")
+            result = func(*args, **kwargs)
+            # print(f"After calling {func.__name__}")
+
+            if TorchTensor is not None:
+                if isinstance(result, TorchTensor):
+                    ref = TensorRef(result, tensorsManager)
+                    ref.toCPU()
+                    return ref
+
+            return result
+
+        def funWrapper(*args, **kwargs):
+            args = list(args)
+            for a in range(0, len(args)):
+                arg = args[a]
+                if TensorRef is not None:
+                    if isinstance(arg, TensorRef):
+                        args[a] = arg.toGPU()
+            args = tuple(args)
+
+            if False: #kwargs checker
+                kpos = 0
+                args = list(args)
+                for name, param in func_signature.parameters.items():
+                    if param.kind in [param.POSITIONAL_ONLY, param.POSITIONAL_OR_KEYWORD]:
+                        if name not in kwargs:
+                            if len(args) > kpos:
+                                kwargs[name] = args[kpos]
+                                del args[kpos]
+                    else:
+                        kpos += 1
+                args = tuple(args)
+
+            # print(f"Before calling {func.__name__}")
+            result = func(*args, **kwargs)
+            # print(f"After calling {func.__name__}")
+
+            if TorchTensor is not None:
+                if isinstance(result, TorchTensor):
+                    ref = TensorRef(result, tensorsManager)
+                    ref.toCPU()
+                    return ref
+
+            return result
+
+    wrapper = classWrapper.funWrapper
 
     try:
         wrapModule(func)
@@ -68,13 +159,14 @@ def method_wrapper(func):
             except:
                 ignore = True
 
+    itsMe.append(wrapper)
     return wrapper
 
 TensorRef = None
 TorchTensor = None
 
 def wrapModule(mod):
-    if mod.__name__ == 'wrapper':
+    if startsWith(mod.__name__, exclude):
         return mod
 
     wrappedVars = 0
@@ -84,17 +176,34 @@ def wrapModule(mod):
         ignore = True
 
     vars = dir(mod)
-    mod.__dict__['__wrapped'] = len(vars)
+
+    try:
+        mod.__dict__['__wrapped'] = len(vars)
+    except:
+        ignore = True
 
     if wrappedVars == len(vars):
         return mod
 
-    for v in vars:
+    def trySet(name, attr):
         try:
-            attr = mod.__dict__[v]
+            mod.__dict__[v] = attr
+        except:
+            setattr(mod, name, attr)
+
+    for v in vars:
+        if v.startswith('__'):
+            continue
+
+        try:
+            attr = getattr(mod, v)
 
             #TODO: try to invert the conditions?
-            if isinstance(
+            if inspect.isclass(attr) or inspect.ismodule(attr):
+                if startsWith(attr.__module__+'.'+attr.__name__, injectTo) and not startsWith(attr.__module__+'.'+attr.__name__, exclude):
+                    wr = wrapModule(attr)
+                    trySet(v, wr)
+            elif isinstance(
                 attr,
                 (
                     types.FunctionType,
@@ -103,12 +212,10 @@ def wrapModule(mod):
                     types.MethodType
                 ),
             ) and callable(attr):
-                mod.__dict__[v] = method_wrapper(attr)
+                wr = method_wrapper(attr)
+                trySet(v, wr)
 
-            elif inspect.isclass(attr) or inspect.ismodule(attr):
-                if startsWith(attr.__module__, injectTo):
-                    mod.__dict__[v] = wrapModule(attr)
-        except:
+        except Exception as err:
             ignore = True
 
     return mod
