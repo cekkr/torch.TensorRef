@@ -175,6 +175,7 @@ def wrapModule(mod):
 
         try:
             attr = getattr(mod, v)
+            attrName = name + '.' + v
 
             if name.startswith('torch.nn.modules'):
                 if v == 'register_parameter':
@@ -183,6 +184,17 @@ def wrapModule(mod):
                 if v == 'register_buffer':
                     tryHook(v, attr, Hooks.module_register_buffer)
                     attr = Hooks.module_register_buffer
+
+
+            isNnModule = attrName == 'torch.nn.modules.container.Module'
+            if isNnModule:
+                defaultSetAttr = getattr(attr, '__setattr__')
+                def setAttr(self, name, val):
+                    if isinstance(val, TensorRef) and not isinstance(val, torch.Tensor):
+                        val = val.target
+                    defaultSetAttr(self, name, val)
+                setattr(attr, '__setattr__', setAttr)
+
 
             if inspect.isclass(attr) or inspect.ismodule(attr):
                 if startsWith(attr.__module__+'.'+attr.__name__, injectTo) and not startsWith(attr.__module__+'.'+attr.__name__, exclude):
