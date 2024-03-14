@@ -41,10 +41,10 @@ def checkSelf(self):
 
 injectTo = ['torch']
 exclude = [
-            #'torch.fx', 'torch.jit', 'torch.autograd', 'torchgen', 'torch.storage', 'functools', 'torch.utils', 'torch.library'
+            'torch.fx', 'torch.jit', 'torch.autograd', 'torchgen', 'torch.storage', 'functools', 'torch.utils', 'torch.library',
             'torchTensorRef',
             #'torch._tensor', 'torch._C'
-            'torch._'
+            #'torch._'
            ]
 
 def startsWith(str, arr):
@@ -178,6 +178,9 @@ def wrapModule(mod):
         try:
             attr = getattr(mod, v)
             attrName = name + '.' + v
+
+            if attrName.startswith('torch.Tensor'):
+                continue
 
             if name.startswith('torch.nn.modules'):
                 if v == 'register_parameter':

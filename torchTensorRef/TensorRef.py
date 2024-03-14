@@ -208,6 +208,9 @@ def createMagicWrapper(m):
     magic = getattr(Tensor, m)
     magicsAttr[m] = magic
 
+    if m == '__torch_function__':
+        return magic
+
     magicRef = None
     try:
         magicRef = getattr(TensorRef, m)
@@ -217,20 +220,21 @@ def createMagicWrapper(m):
     if magicRef is None:
         def makeWrapper(m, magic):
             def magicWrapper(*args, **kwargs):
-                self, *args = args
 
-                ref = None
-                if isinstance(self, TensorRef):
-                    ref = self
-                    self = ref.toGPU()
+                refs = []
+                args = list(args)
+                for a in range(0, len(args)):
+                    if isinstance(args[a], TensorRef):
+                        refs.append(args[a])
+                        args[a] = args[a].toGPU()
 
                 try:
-                    res = magic(self, *args, **kwargs)
+                    res = magic(*args, **kwargs)
 
                     if res is NotImplemented:
                         return getattr(TensorRef, '__'+m[3:])(ref, *args, **kwargs)
 
-                    if ref is not None:
+                    for ref in refs:
                         ref.toCPU()
 
                     if isinstance(res, Tensor):
