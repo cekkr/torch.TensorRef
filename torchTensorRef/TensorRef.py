@@ -106,7 +106,7 @@ class TensorRef(ABC):
             if self.target.is_cpu:
                 dev = self.proxyInfo.tensorsManager.device
                 if dev is not None and dev != "cpu":
-                    res = self.target.to(dev)
+                    res = self.target.to(device=dev, dtype=self.target.dtype)
                     if isinstance(self.target, torch.nn.Parameter) and not isinstance(res, torch.nn.Parameter):
                         res = torch.nn.Parameter(res)
                     self.target = res
@@ -116,7 +116,8 @@ class TensorRef(ABC):
     def toCPU(self):
         if isinstance(self.target, Tensor):
             if not self.target.is_cpu:
-                self.target = self.target.to("cpu")
+                self.target = self.target.to(device="cpu", dtype=self.target.dtype)
+                self.target = self.target.to(torch.get_default_dtype()) # ensure Tensor default type
 
         return self.target
 
