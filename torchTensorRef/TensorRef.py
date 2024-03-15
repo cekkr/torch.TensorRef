@@ -209,7 +209,7 @@ Tensor.__bases__ = (TensorRefBase,) + Tensor.__bases__
 
 # Create math operation magic functions
 ops = [
-        "add", "sub", "truediv", "floordiv", "mul", "mod", "divmod", "pow", "and", "or", "lshift", "rshift", "xor",
+        "add", "sub", "truediv", "floordiv", "mul", "mod", "divmod", "pow", "and", "or", "lshift", "rshift", "xor", "matmul",
         "cmp", "eq", "nq", "ne", "lt", "gt", "le", "ge"
     ]
 
