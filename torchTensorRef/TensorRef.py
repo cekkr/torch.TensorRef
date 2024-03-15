@@ -195,6 +195,10 @@ class TensorRef(ABC, TensorRefBase):
     
     def __getitem__(self, key):
         res = self.target.__getitem__(key)
+
+        if isinstance(key, (slice, tuple, int)) or key is None:
+            return TensorRef(res, self.proxyInfo.tensorsManager)
+
         return res
 
 #TensorRef.register(Tensor)
@@ -250,10 +254,10 @@ def applyMagicMethod_math(op, dev=''):
                     )
                     res.toCPU()
 
-                cpu = self.toCPU()
+                self.toCPU()
 
-                if withBaseTensor:
-                    return self.target
+                #if withBaseTensor:
+                #    return self.target
 
                 return res
 
