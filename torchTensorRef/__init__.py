@@ -467,23 +467,27 @@ def noisy_importer(
 
 
 import builtins
-
-def init():
-    builtins.__import__ = noisy_importer
-
-###
-### torch
-###
-
-import torch
-from torch import Tensor as TorchTensor
-
-flushWrap()
-
-from .TensorRef import TensorRef
 from .common import tensorsManager
 
-hook.props = { 'tensor': torch.Tensor, 'tensorRef': TensorRef }
+def init():
+    global TensorRef
+    global TorchTensor
+    global torch
+    
+    builtins.__import__ = noisy_importer
+
+    ###
+    ### torch
+    ###
+
+    import torch
+    from torch import Tensor as TorchTensor
+
+    flushWrap()
+
+    from .TensorRef import TensorRef
+
+    hook.props = { 'tensor': torch.Tensor, 'tensorRef': TensorRef }
 
 #if setTensorLikeTo is not None:
 #    setattr(setTensorLikeTo, 'TensorLike', (setTensorLikeTo.TensorLike, hook.TensorRefBase))

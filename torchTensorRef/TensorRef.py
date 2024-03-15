@@ -27,6 +27,9 @@ def levelArg(arg, ref):
     return arg
 
 def levelTensorsArgs(args, kwargs):
+    if len(args) == 0:
+        return None, args, kwargs
+
     self = args[0]
     manager = tensorsManager
     if isinstance(self, TensorRef):
