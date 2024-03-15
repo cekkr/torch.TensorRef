@@ -9,6 +9,37 @@ class ProxyInfo:
     def __init__(self):
         self.device = "cpu"
 
+def levelArg(arg, ref):
+    if isinstance(arg, Tensor):
+        arg = TensorRef(arg, ref['tensorsManager'])
+    if isinstance(arg, TensorRef):
+        ref['proxies'].append(arg)
+        arg = arg.toGPU()
+    if isinstance(arg, tuple):
+        arg = list(arg)
+        for a in range(0, len(arg)):
+            arg[a] = levelArg(arg[a], ref)
+        arg = tuple(arg)
+
+    return arg
+
+def levelTensorsArgs(args, kwargs):
+    self = args[0]
+    manager = tensorsManager
+    if isinstance(self, TensorRef):
+        manager = self.proxyInfo.tensorsManager
+
+    ref = { 'proxies': [], 'tensorsManager': manager }
+    args = list(args)
+    for a in range(0, len(args)):
+        args[a] = levelArg(args[a], ref)
+    args = tuple(args)
+
+    for key, value in kwargs.items():
+        kwargs[key] = levelArg(value, ref)
+
+    return ref, args, kwargs
+
 class TensorRef(ABC):
 
     def __init__(self, target, tensorsManager):
@@ -233,15 +264,22 @@ def createMagicWrapper(m):
         def makeWrapper(m, magic):
             def magicWrapper(*args, **kwargs):
 
+                '''
                 refs = []
                 args = list(args)
                 for a in range(0, len(args)):
                     if isinstance(args[a], TensorRef):
                         refs.append(args[a])
                         args[a] = args[a].toGPU()
+                '''
+
+                self = args[0]
+                ref, args, kwargs = levelTensorsArgs(args, kwargs)
 
                 # What an ugly thing...
                 if isTorchFun:
+                    args = list(args)
+
                     fun = args[1]
                     types = args[2]
                     tup = args[3]
@@ -266,7 +304,7 @@ def createMagicWrapper(m):
                     args[2] = tup
                     del args[3]
 
-                args = tuple(args)
+                    args = tuple(args)
 
                 try:
                     res = magic(*args, **kwargs)
@@ -274,11 +312,15 @@ def createMagicWrapper(m):
                     if res is NotImplemented:
                         return getattr(TensorRef, '__'+m[3:])(ref, *args, **kwargs)
 
-                    for ref in refs:
-                        ref.toCPU()
+                    for proxy in ref['proxies']:
+                        proxy.toCPU()
 
                     if isinstance(res, Tensor):
-                        res = TensorRef(res, ref.proxyInfo.tensorsManager)
+                        manager = tensorsManager
+                        if isinstance(self, TensorRef):
+                            manager = self.proxyInfo.tensorsManager
+
+                        res = TensorRef(res, manager)
                         res.toCPU()
 
                     return res
