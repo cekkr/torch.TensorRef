@@ -3,7 +3,7 @@ from torch import Tensor
 from abc import ABC
 from functools import partial
 
-from .common import tensorsManager
+from .common import tensorsManager, VERBOSE_HOOK
 from .hook import TensorRefBase
 
 class ProxyInfo:
@@ -64,6 +64,9 @@ class TensorRef(ABC, TensorRefBase):
                 if name == "target":
                     return self
 
+        if VERBOSE_HOOK:
+            print('TRef Attr: ', name)
+
         # Delegate attribute access to the target object
         attr = getattr(self.target, name)
 
@@ -94,7 +97,8 @@ class TensorRef(ABC, TensorRefBase):
             # If the original attribute is callable, we return a new wrapper function
             def wrapper(*args, **kwargs):
                 # Here you can analyze the arguments before calling the original function
-                #print(f"Calling {name}")
+                if VERBOSE_HOOK:            
+                    print(f"Calling {name}")
 
                 # look for tensors on CPU
                 proxies = []
@@ -139,6 +143,9 @@ class TensorRef(ABC, TensorRefBase):
                         result = TensorRef(result, self.proxyInfo.tensorsManager)
                         result.toCPU()
 
+                if VERBOSE_HOOK:            
+                    print(f"Returning {name}")
+
                 return result
 
             return wrapper
@@ -156,6 +163,9 @@ class TensorRef(ABC, TensorRefBase):
                     res = self.target.to(device=dev, dtype=dt)
                     if isinstance(self.target, torch.nn.Parameter) and not isinstance(res, torch.nn.Parameter):
                         res = torch.nn.Parameter(res)
+                    else:
+                        #res = res.to(torch.get_default_dtype())
+                        pass
                     self.target = res
 
         return self.target
@@ -186,7 +196,9 @@ class TensorRef(ABC, TensorRefBase):
 
 #TensorRef.register(Tensor)
 #TensorRef.register(torch.nn.Parameter)
+
 Tensor.__bases__ = (TensorRefBase,) + Tensor.__bases__
+#TensorRefBase.__bases__ = (Tensor,) + TensorRefBase.__bases__
 
 # Create math operation magic functions
 ops = [
@@ -202,6 +214,9 @@ def applyMagicMethod_math(op, dev=''):
         if method is not None:
 
             def mathWrapper(self, other):
+                if VERBOSE_HOOK:
+                    print('TRef Math: ', m)
+
                 self.toGPU()
                 res = None
                 withBaseTensor = False
@@ -267,6 +282,9 @@ def createMagicWrapper(m):
     if magicRef is None:
         def makeWrapper(m, magic):
             def magicWrapper(*args, **kwargs):
+
+                if VERBOSE_HOOK:
+                    print('TRef Magic: ', m)
 
                 '''
                 refs = []

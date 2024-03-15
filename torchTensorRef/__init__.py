@@ -8,6 +8,9 @@ import types
 import typing
 
 from .hook import Hooks
+from .common import VERBOSE_HOOK
+
+VERBOSE_HOOK = True
 
 torch = None
 TensorRef = None
@@ -78,6 +81,12 @@ def method_wrapper(func):
 
     class classWrapper:
         def funWrapper(*args, **kwargs):
+
+            if VERBOSE_HOOK:
+                print('Fun Hook: ', name)
+
+            if name == 'torch.ceil':
+                print("check")
 
             args = list(args)
 
@@ -250,6 +259,8 @@ def flushWrap():
     importToWrap = []
     firstWrapping = False
 
+origTensorLike = None
+
 def noisy_importer(
     name,
     locals={},
@@ -260,6 +271,7 @@ def noisy_importer(
     defaultImport=None,
 ):
     global setTensorLikeTo
+    global origTensorLike
 
     if defaultImport is None:
         defaultImport = old_import
@@ -390,12 +402,32 @@ def noisy_importer(
             return True
         res.__dict__['is_tensor_like'] = funAlwaysTrue
 
-    if name.endswith('_prims_common'):
+    if name.endswith('inspect'):
+        if '/torch/' in locals['__file__']:
+            res = hook.Hooks.inspect(res)
+
+    if name.endswith('_prims_common') and False:
         #setTensorLikeTo = res
         try:
             setattr(res, 'TensorLike', hook.TensorRefBase)
+
+            if origTensorLike is None:
+                origTensorLike = res.TensorLikeType
+
+            print(globals['__file__'])
+            if globals['__file__'].endswith('_prims_common/wrappers.py'):
+                setattr(res, 'TensorLikeType', (hook.TensorRefBase, origTensorLike))
+            else:
+                setattr(res, 'TensorLikeType', origTensorLike)
+            '''
+            if globals['__file__'].endswith('_refs/__init__.py')\
+                    or globals['__file__'].endswith('_prims_common/wrappers.py'):
+                setattr(res, 'TensorLikeType', (hook.TensorRefBase, importCache['torch'].Tensor))
+            else:
+                setattr(res, 'TensorLikeType', hook.TensorRefBase)
+            '''
             #setattr(res, 'TensorLike', (res.TensorLike, hook.TensorRefBase))
-        except:
+        except Exception as err:
             pass
 
     return res
@@ -417,6 +449,8 @@ flushWrap()
 
 from .TensorRef import TensorRef
 from .common import tensorsManager
+
+hook.props = { 'tensor': torch.Tensor, 'tensorRef': TensorRef }
 
 #if setTensorLikeTo is not None:
 #    setattr(setTensorLikeTo, 'TensorLike', (setTensorLikeTo.TensorLike, hook.TensorRefBase))
