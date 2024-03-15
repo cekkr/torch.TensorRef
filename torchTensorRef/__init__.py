@@ -9,6 +9,7 @@ import typing
 
 from .hook import Hooks
 from .common import VERBOSE_HOOK
+from .basic import Stack
 
 VERBOSE_HOOK = True
 
@@ -57,7 +58,10 @@ def startsWith(str, arr):
         if str.startswith(a): # or str.endswith(a):
             return True 
     return False
-    
+
+
+methodStack = Stack()
+
 itsMe = []
 def method_wrapper(func):
     name = func.__module__+'.'+func.__name__
@@ -82,8 +86,21 @@ def method_wrapper(func):
     class classWrapper:
         def funWrapper(*args, **kwargs):
 
+            global methodStack
+
             if VERBOSE_HOOK:
                 print('Fun Hook: ', name)
+
+            methodStack = methodStack.enter()
+            methodStack.name = name
+
+            _returnNormalTensor = returnNormalTensor
+
+            if methodStack.get('inOp') is True:
+                _returnNormalTensor = True
+
+            if name.startswith('torch._refs') or name == 'torch.group_norm':
+                methodStack.set('inOp', True)
 
             if name == 'torch.ceil':
                 print("check")
@@ -110,6 +127,9 @@ def method_wrapper(func):
                     '''
             args = tuple(args)
 
+            #if name == 'torch.group_norm':
+            #    print("debug")
+
             # print(f"Before calling {func.__name__}")
             result = func(*args, **kwargs)
             # print(f"After calling {func.__name__}")
@@ -117,7 +137,9 @@ def method_wrapper(func):
             for r in refs:
                 r.toCPU()
 
-            if not returnNormalTensor and TorchTensor is not None:
+            methodStack = methodStack.exit()
+
+            if not _returnNormalTensor and TorchTensor is not None:
                 if isinstance(result, TorchTensor):
                     ref = TensorRef(result, tensorsManager)
                     ref.toCPU()
@@ -410,7 +432,7 @@ def noisy_importer(
 
     if name.endswith('inspect'):
         if '/torch/' in locals['__file__']:
-            res = hook.Hooks.inspect(res)                     
+            res = hook.Hooks.inspect(res)
 
     if name.endswith('_prims_common'):
         #setTensorLikeTo = res

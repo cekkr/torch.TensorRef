@@ -5,8 +5,24 @@ origInspectSignature = inspect.signature
 
 props = {}
 
-class EmptyObj:
-    pass
+class NewSignature(inspect.Signature):
+    @property
+    def parameters(self):
+        """The radius property."""
+        return self._parameters
+
+    @parameters.setter
+    def parameters(self, value):
+        self._parameters = value
+
+    @property
+    def return_annotation(self):
+        """The radius property."""
+        return self._return_annotation
+
+    @return_annotation.setter
+    def return_annotation(self, value):
+        self._return_annotation = value
 
 class Hooks:
     def module_register_parameter(self, name, param):
@@ -38,7 +54,7 @@ class Hooks:
                 '''
 
                 if res.return_annotation is TensorRefBase:
-                    nres = EmptyObj()
+                    nres = NewSignature()
                     setattr(nres, 'parameters', res.parameters)
                     setattr(nres, 'return_annotation', props['tensor'])
                     res = nres
