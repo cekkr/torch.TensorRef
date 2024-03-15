@@ -13,7 +13,7 @@ class ProxyInfo:
 def levelArg(arg, ref):
     if isinstance(arg, Tensor):
         arg = TensorRef(arg, ref['tensorsManager'])
-    if isinstance(arg, TensorRefBase):
+    if isinstance(arg, TensorRef):
         ref['proxies'].append(arg)
         arg = arg.toGPU()
     if isinstance(arg, tuple):
@@ -29,7 +29,7 @@ def levelArg(arg, ref):
 def levelTensorsArgs(args, kwargs):
     self = args[0]
     manager = tensorsManager
-    if isinstance(self, TensorRefBase):
+    if isinstance(self, TensorRef):
         manager = self.proxyInfo.tensorsManager
 
     ref = { 'proxies': [], 'tensorsManager': manager }
@@ -186,6 +186,7 @@ class TensorRef(ABC, TensorRefBase):
 
 #TensorRef.register(Tensor)
 #TensorRef.register(torch.nn.Parameter)
+Tensor.__bases__ = (TensorRefBase,) + Tensor.__bases__
 
 # Create math operation magic functions
 ops = [

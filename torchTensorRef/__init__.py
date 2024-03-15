@@ -65,6 +65,11 @@ def method_wrapper(func):
     if name.startswith('torch.nn.modules'):
         passAsRef = True
 
+    passTensorRefs = False
+    '''
+    passTensorRefs = passTensorRefs or name.startswith('torch._refs')
+    passTensorRefs = passTensorRefs or name.startswith('torch._prims')
+    '''
     returnNormalTensor = name.endswith('_maybe_convert_to_dtype')
 
     #print(name)
@@ -85,7 +90,9 @@ def method_wrapper(func):
                         args[a] = TensorRef(arg, tensorsManager)
                     if isinstance(args[a], TensorRef):
                         refs.append(args[a])
-                        args[a] = args[a].toGPU()
+                        res = args[a].toGPU()
+                        if not passTensorRefs:
+                            args[a] = res
                     '''
                     else:
                         # https://github.com/huggingface/accelerate/blob/main/src/accelerate/big_modeling.py
@@ -233,7 +240,7 @@ importCache = {}
 importToWrap = []
 firstWrapping = True
 
-#setTensorLikeTo = None
+setTensorLikeTo = None
 
 def flushWrap():
     global importToWrap
@@ -252,6 +259,8 @@ def noisy_importer(
     forceLoad=False,
     defaultImport=None,
 ):
+    global setTensorLikeTo
+
     if defaultImport is None:
         defaultImport = old_import
 
@@ -381,8 +390,13 @@ def noisy_importer(
             return True
         res.__dict__['is_tensor_like'] = funAlwaysTrue
 
-    #if name.endswith('_prims_common'):
-    #    setTensorLikeTo = res
+    if name.endswith('_prims_common'):
+        #setTensorLikeTo = res
+        try:
+            setattr(res, 'TensorLike', hook.TensorRefBase)
+            #setattr(res, 'TensorLike', (res.TensorLike, hook.TensorRefBase))
+        except:
+            pass
 
     return res
 
@@ -405,6 +419,28 @@ from .TensorRef import TensorRef
 from .common import tensorsManager
 
 #if setTensorLikeTo is not None:
-#    setattr(setTensorLikeTo, 'TensorLike', (torch.Tensor, hook.TensorRefBase))
+#    setattr(setTensorLikeTo, 'TensorLike', (setTensorLikeTo.TensorLike, hook.TensorRefBase))
+
+###
+###
+###
+
+# Save the original isinstance function
+original_isinstance = isinstance
+
+# Define a new function that extends isinstance
+def custom_isinstance(obj, classinfo):
+    # Example: Let's say you want all instances to be considered a member of a special class, SpecialClass
+    if classinfo is hook.TensorRefBase:
+        return original_isinstance(obj, TensorRef) or original_isinstance(obj, torch.Tensor)
+    # For all other cases, defer to the original isinstance
+    return original_isinstance(obj, classinfo)
+
+# Replace the built-in isinstance with the custom one
+isinstance = custom_isinstance
+
+###
+###
+###
 
 print("torch.TensorRef injected.")
