@@ -83,10 +83,9 @@ def method_wrapper(func):
                 if TensorRef is not None:
                     if isinstance(arg, TorchTensor):
                         args[a] = TensorRef(arg, tensorsManager)
-                    if not passAsRef:
-                        if isinstance(args[a], TensorRef):
-                            refs.append(args[a])
-                            args[a] = args[a].toGPU()
+                    if isinstance(args[a], TensorRef):
+                        refs.append(args[a])
+                        args[a] = args[a].toGPU()
                     '''
                     else:
                         # https://github.com/huggingface/accelerate/blob/main/src/accelerate/big_modeling.py
