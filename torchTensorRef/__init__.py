@@ -102,9 +102,6 @@ def method_wrapper(func):
             if name.startswith('torch._refs') or name == 'torch.group_norm':
                 methodStack.set('inOp', True)
 
-            if name == 'torch.ceil':
-                print("check")
-
             args = list(args)
 
             refs = []
@@ -471,8 +468,8 @@ def noisy_importer(
 
 import builtins
 
-builtins.__import__ = noisy_importer
-
+def init():
+    builtins.__import__ = noisy_importer
 
 ###
 ### torch
