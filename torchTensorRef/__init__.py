@@ -391,6 +391,12 @@ def noisy_importer(
     if name == 'torch':
         torch = res
 
+    if name == 'torch._tensor':
+        hook.props['tensor'] = res.Tensor
+
+    if name.endswith('_custom_op.impl'):
+        res.SUPPORTED_RETURN_TYPES[hook.TensorRefBase] = 'TensorRefBase'
+
     if name == 'torch._C':
         def funIgnore(fun, *args, **kwargs):
             return fun
@@ -404,9 +410,9 @@ def noisy_importer(
 
     if name.endswith('inspect'):
         if '/torch/' in locals['__file__']:
-            res = hook.Hooks.inspect(res)
+            res = hook.Hooks.inspect(res)                     
 
-    if name.endswith('_prims_common') and False:
+    if name.endswith('_prims_common'):
         #setTensorLikeTo = res
         try:
             setattr(res, 'TensorLike', hook.TensorRefBase)
@@ -414,11 +420,19 @@ def noisy_importer(
             if origTensorLike is None:
                 origTensorLike = res.TensorLikeType
 
+            if locals['__file__'].endswith('_refs/__init__.py'): # or locals['__file__'].endswith('_prims_common/wrappers.py'):
+                setattr(res, 'TensorLikeType', hook.TensorRefBase)
+            else:
+                setattr(res, 'TensorLikeType', origTensorLike)
+
+            '''
             print(globals['__file__'])
             if globals['__file__'].endswith('_prims_common/wrappers.py'):
                 setattr(res, 'TensorLikeType', (hook.TensorRefBase, origTensorLike))
             else:
                 setattr(res, 'TensorLikeType', origTensorLike)
+            '''
+
             '''
             if globals['__file__'].endswith('_refs/__init__.py')\
                     or globals['__file__'].endswith('_prims_common/wrappers.py'):

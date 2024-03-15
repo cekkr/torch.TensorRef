@@ -1,8 +1,12 @@
 import inspect
+import copy
 
 origInspectSignature = inspect.signature
 
 props = {}
+
+class EmptyObj:
+    pass
 
 class Hooks:
     def module_register_parameter(self, name, param):
@@ -24,10 +28,21 @@ class Hooks:
         def signature(fn):
             res = origInspectSignature(fn)
 
-            if 'tensorRef' in props:
-                if res.return_annotation is props.tensorRef:
-                    res.return_annotation = props.tensor
-                    
+            if 'tensor' in props:
+                '''
+                if res.return_annotation is props['tensor']:
+                    nres = EmptyObj()
+                    setattr(nres, 'parameters', res.parameters)
+                    setattr(nres, 'return_annotation', TensorRefBase)
+                    res = nres
+                '''
+
+                if res.return_annotation is TensorRefBase:
+                    nres = EmptyObj()
+                    setattr(nres, 'parameters', res.parameters)
+                    setattr(nres, 'return_annotation', props['tensor'])
+                    res = nres
+
             return res
 
         mod.signature = signature 
@@ -35,3 +50,5 @@ class Hooks:
 
 class TensorRefBase:
     pass
+
+TensorRefBase.__module__ = "__torch__.torch.classes.TensorRef"
