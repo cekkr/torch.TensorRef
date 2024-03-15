@@ -5,10 +5,12 @@ import inspect
 # import inspect
 # import copy
 import types
+import typing
 
 from .hook import Hooks
 
 torch = None
+TensorRef = None
 
 def is_builtin_type(obj):
     builtin_types = (int, float, str, list, dict, tuple, set, bool, bytes)
@@ -44,7 +46,7 @@ exclude = [
             'torch.fx', 'torch.jit', 'torch.autograd', 'torchgen', 'torch.storage', 'functools', 'torch.utils', 'torch.library',
             'torchTensorRef',
             #'torch._tensor', 'torch._C'
-            'torch._'
+            #'torch._'
            ]
 
 def startsWith(str, arr):
@@ -62,6 +64,8 @@ def method_wrapper(func):
     passAsRef = False
     if name.startswith('torch.nn.modules'):
         passAsRef = True
+
+    returnNormalTensor = name.endswith('_maybe_convert_to_dtype')
 
     #print(name)
 
@@ -98,7 +102,7 @@ def method_wrapper(func):
             for r in refs:
                 r.toCPU()
 
-            if TorchTensor is not None:
+            if not returnNormalTensor and TorchTensor is not None:
                 if isinstance(result, TorchTensor):
                     ref = TensorRef(result, tensorsManager)
                     ref.toCPU()
@@ -229,6 +233,8 @@ old_import = __import__
 importCache = {}
 importToWrap = []
 firstWrapping = True
+
+#setTensorLikeTo = None
 
 def flushWrap():
     global importToWrap
@@ -376,6 +382,9 @@ def noisy_importer(
             return True
         res.__dict__['is_tensor_like'] = funAlwaysTrue
 
+    #if name.endswith('_prims_common'):
+    #    setTensorLikeTo = res
+
     return res
 
 
@@ -395,5 +404,8 @@ flushWrap()
 
 from .TensorRef import TensorRef
 from .common import tensorsManager
+
+#if setTensorLikeTo is not None:
+#    setattr(setTensorLikeTo, 'TensorLike', (torch.Tensor, hook.TensorRefBase))
 
 print("torch.TensorRef injected.")

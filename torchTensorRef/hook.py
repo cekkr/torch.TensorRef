@@ -14,3 +14,6 @@ class Hooks:
                 super().__setattr__(name, value)
         return ModuleHook
     '''
+
+class TensorRefBase:
+    pass

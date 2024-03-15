@@ -4,6 +4,7 @@ from abc import ABC
 from functools import partial
 
 from .common import tensorsManager
+from .hook import TensorRefBase
 
 class ProxyInfo:
     def __init__(self):
@@ -20,7 +21,9 @@ def levelArg(arg, ref):
         for a in range(0, len(arg)):
             arg[a] = levelArg(arg[a], ref)
         arg = tuple(arg)
-
+    if isinstance(arg, list):
+        for a in range(0, len(arg)):
+            arg[a] = levelArg(arg[a], ref)
     return arg
 
 def levelTensorsArgs(args, kwargs):
@@ -40,7 +43,7 @@ def levelTensorsArgs(args, kwargs):
 
     return ref, args, kwargs
 
-class TensorRef(ABC):
+class TensorRef(ABC, TensorRefBase):
 
     def __init__(self, target, tensorsManager):
         setattr(self, "target", target)
@@ -291,13 +294,9 @@ def createMagicWrapper(m):
                             types[t] = Tensor
                     types = tuple(types)
 
-                    tup = list(tup)
-                    for t in range(0, len(tup)):
-                        if isinstance(tup[t], Tensor):
-                            tup[t] = TensorRef(tup[t],tensorsManager)
-                        if isinstance(tup[t], TensorRef):
-                            tup[t] = tup[t].toGPU()
-                    tup = tuple(tup)
+                    tref, tup, _ = levelTensorsArgs(tup, {})
+                    for p in tref['proxies']:
+                        ref['proxies'].append(p)
 
                     args[0] = fun
                     args[1] = types
