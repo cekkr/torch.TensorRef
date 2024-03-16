@@ -11,8 +11,6 @@ from .hook import Hooks
 from .common import VERBOSE_HOOK
 from .basic import Stack
 
-VERBOSE_HOOK = True
-
 torch = None
 TensorRef = None
 

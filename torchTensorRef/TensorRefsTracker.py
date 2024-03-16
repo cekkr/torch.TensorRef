@@ -1,3 +1,4 @@
+from .common import VERBOSE_TENSORS_TRACKER
 
 class TensorRefsTracker:
     def __init__(self):
@@ -26,6 +27,9 @@ class TensorRefsTracker:
             self.sizeOnGPU -= size
 
     def printStatus(self):
+        if not VERBOSE_TENSORS_TRACKER:
+            return
+
         print('Tensors:\t CPU: '+str(self.numOnCPU)+' \t GPU: '+str(self.numOnGPU))
 
         cpuGB = self.sizeOnCPU / (1024) ** 3
