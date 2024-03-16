@@ -1,12 +1,22 @@
 from .common import VERBOSE_TENSORS_TRACKER
 import sys
 import copy
+import gc
+import torch
 
 TensorRef = None
 
 def SetTensorRefType(tr):
     global TensorRef
     TensorRef = tr
+
+def clearCuda():
+    if torch.cuda.is_available():
+        # Clear the cache
+        torch.cuda.empty_cache()
+
+        # Optionally, you can reset all CUDA devices to further ensure all memory is freed
+        torch.cuda.reset_peak_memory_stats()
 
 class TensorRefsTracker:
     def __init__(self):
@@ -88,4 +98,6 @@ class TensorRefsTracker:
 
                 self.uncountTensor(tensor)
 
+        gc.collect()
+        clearCuda()
         self.printStatus()
