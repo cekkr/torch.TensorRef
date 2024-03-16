@@ -16,14 +16,16 @@ class TensorRefsTracker:
         self.sizeOnCPU = 0
         self.sizeOnGPU = 0
 
+        self.tensorRefs = {}
         self.tensors = {}
 
     def countTensor(self, tensorRef):
         tensor = tensorRef
         if isinstance(tensorRef, TensorRef):
             tensor = tensorRef.target
-            self.tensors[id(tensorRef)] = tensorRef
+            self.tensorRefs[id(tensorRef)] = tensorRef
 
+        self.tensors[id(tensors)] = tensors
         size = tensor.numel() * tensor.element_size() # in bytes
         if tensor.is_cpu:
             self.numOnCPU += 1
@@ -36,6 +38,11 @@ class TensorRefsTracker:
         tensor = tensorRef
         if isinstance(tensorRef, TensorRef):
             tensor = tensorRef.target
+
+        try:
+            del self.tensors[id(tensor)]
+        except Exception as err:
+            pass
 
         size = tensor.numel() * tensor.element_size() # in bytes
         if tensor.is_cpu:
@@ -57,19 +64,28 @@ class TensorRefsTracker:
 
     def remTensorRef(self, tensor):
         try:
-            del self.tensors[id(tensor)]
+            del self.tensorRefs[id(tensor)]
         except Exception as err:
             pass
-        
+
     def checkTensors(self):
+        tensorRefs = copy.copy(self.tensorRefs)
+        for key, tensor in tensorRefs.items():
+            countRefs = sys.getrefcount(tensor)
+            if countRefs <= 4: # self.tensors + tensor + getrefcount(tensor) + tensors
+                if VERBOSE_TENSORS_TRACKER:
+                    print("Removing unused tensorRef...")
+
+                self.uncountTensor(tensor)
+                self.remTensorRef(tensor)
+
         tensors = copy.copy(self.tensors)
         for key, tensor in tensors.items():
             countRefs = sys.getrefcount(tensor)
-            if countRefs <= 4: # self.tensors + tensor + getrefcount(tensor) + tensors
+            if countRefs <= 4:  # self.tensors + tensor + getrefcount(tensor) + tensors
                 if VERBOSE_TENSORS_TRACKER:
                     print("Removing unused tensor...")
 
                 self.uncountTensor(tensor)
-                self.printStatus()
 
-                self.remTensorRef(tensor)
+        self.printStatus()
