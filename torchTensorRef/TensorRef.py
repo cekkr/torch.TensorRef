@@ -107,7 +107,7 @@ class TensorRef(ABC, TensorRefBase):
                 if VERBOSE_HOOK:            
                     print(f"Calling {name}")
 
-                if name != 'set_':
+                if name != 'set_' and name != 'numpy':
                     self.toGPU()
                 attr = getattr(self.target, name) # you have to retrieve it again
 
@@ -338,7 +338,7 @@ def createMagicWrapper(m):
 
                     fun = args[1]
 
-                    if fun.__name__.endswith('__array__'):
+                    if fun.__name__.endswith('__array__'): # sub with ==
                         opts['onCPU'] = True
 
                     types = args[2]
