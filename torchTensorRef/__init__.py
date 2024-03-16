@@ -126,9 +126,6 @@ def method_wrapper(func):
             #if name == 'torch.group_norm':
             #    print("debug")
 
-            if name.endswith('nn.linear'):
-                print("debug")
-
             # print(f"Before calling {func.__name__}")
             result = func(*args, **kwargs)
             # print(f"After calling {func.__name__}")

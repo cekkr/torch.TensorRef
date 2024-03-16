@@ -55,6 +55,12 @@ class TensorRefsTracker:
         gpuGB = self.sizeOnGPU / (1024) ** 3
         print('CPU Size:\t '+str(cpuGB)+'GB \t GPU Size:\t '+str(gpuGB)+'GB')
 
+    def remTensorRef(self, tensor):
+        try:
+            del self.tensors[id(tensor)]
+        except Exception as err:
+            pass
+        
     def checkTensors(self):
         tensors = copy.copy(self.tensors)
         for key, tensor in tensors.items():
@@ -66,7 +72,4 @@ class TensorRefsTracker:
                 self.uncountTensor(tensor)
                 self.printStatus()
 
-                try:
-                    del self.tensors[id(tensor)]
-                except Exception as err:
-                    pass
+                self.remTensorRef(tensor)

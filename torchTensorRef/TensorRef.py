@@ -61,6 +61,7 @@ class TensorRef(ABC, TensorRefBase):
         self.proxyInfo.tensorsManager = tensorsManager
 
         tensorRefsTracker.countTensor(self)
+        tensorRefsTracker.remTensorRef(self)
 
     def __setattr__(self, key, value):
         if key == "proxyInfo" or key == "target":
