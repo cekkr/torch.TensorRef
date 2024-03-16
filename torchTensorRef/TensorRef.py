@@ -332,17 +332,18 @@ def createMagicWrapper(m):
                 if m == '__array__':  # conversion to numpy must be done on CPU
                     opts['onCPU'] = True
 
-                self = args[0]
-                ref, args, kwargs = levelTensorsArgs(args, kwargs, opts)
-
                 # What an ugly thing...
                 if isTorchFun:
                     args = list(args)
 
                     fun = args[1]
+
+                    if fun.__name__.endswith('__array__'):
+                        opts['onCPU'] = True
+
                     types = args[2]
                     tup = args[3]
-                    #tensor = args[0]
+                    # tensor = args[0]
 
                     types = list(types)
                     for t in range(0, len(types)):
@@ -350,9 +351,9 @@ def createMagicWrapper(m):
                             types[t] = Tensor
                     types = tuple(types)
 
-                    tref, tup, _ = levelTensorsArgs(tup, {})
-                    for p in tref['proxies']:
-                        ref['proxies'].append(p)
+                    tref, tup, _ = levelTensorsArgs(tup, {}, opts) #todo: handle proxies(?)
+                    #for p in tref['proxies']:
+                    #    ref['proxies'].append(p)
 
                     args[0] = fun
                     args[1] = types
@@ -360,6 +361,9 @@ def createMagicWrapper(m):
                     del args[3]
 
                     args = tuple(args)
+
+                self = args[0]
+                ref, args, kwargs = levelTensorsArgs(args, kwargs, opts)
 
                 try:
                     res = magic(*args, **kwargs)

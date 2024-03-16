@@ -49,7 +49,7 @@ injectTo = ['torch']
 exclude = [
             'torch.fx', 'torch.jit', 'torch.autograd', 'torchgen', 'torch.storage', 'functools', 'torch.utils', 'torch.library',
             'torchTensorRef',
-            #'torch._tensor', 'torch._C'
+            'torch._tensor', 'torch._C'
             #'torch._'
            ]
 
