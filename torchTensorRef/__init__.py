@@ -127,6 +127,7 @@ def method_wrapper(func):
 
             for ref in refs:
                 ref.onUsage()
+                ref.stackEnter()
 
             #if name == 'torch.group_norm':
             #    print("debug")
@@ -138,6 +139,7 @@ def method_wrapper(func):
             for r in refs:
                 r.toCPU()
                 r.uncount()
+                r.stackExit()
 
             methodStack = methodStack.exit()
 

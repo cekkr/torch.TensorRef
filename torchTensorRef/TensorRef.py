@@ -25,6 +25,7 @@ class ProxyInfo:
         self.device = "cpu"
         self.usageNs = 0
         self.locked = False
+        self.stacks = 0
 
 def levelArg(arg, ref):
     if isinstance(arg, Tensor):
@@ -253,6 +254,12 @@ class TensorRef(ABC, TensorRefBase):
         tensorRefsTracker.uncountTensor(self)
         tensorRefsTracker.remTensorRef(self)
 
+    def stackEnter(self):
+        self.proxyInfo.stacks += 1
+
+    def stackExit(self):
+        self.proxyInfo.stacks -= 1
+
     ### Iterate
 
     # The __iter__ method returns the iterator object itself
@@ -300,6 +307,8 @@ def applyMagicMethod_math(op, dev=''):
 
                 self.proxyInfo.locked = True
                 self.toGPU()
+                self.stackEnter()
+                self.onUsage()
 
                 res = None
                 withBaseTensor = False
@@ -311,6 +320,8 @@ def applyMagicMethod_math(op, dev=''):
                 otherTarget = other
                 if isinstance(other, TensorRef):
                     other.proxyInfo.locked = True
+                    other.stackEnter()
+                    other.onUsage()
                     otherTarget = other.toGPU()
                 else:
                     print("Debug: this shouldn't happen 0x45647538")
@@ -318,6 +329,7 @@ def applyMagicMethod_math(op, dev=''):
                 res = method(self.target, otherTarget)
 
                 self.proxyInfo.locked = False
+                self.stackExit()
 
                 if res is NotImplemented:
                     if op == '__pow__':
@@ -329,6 +341,7 @@ def applyMagicMethod_math(op, dev=''):
                 if isinstance(other, TensorRef):
                     other.proxyInfo.locked = False
                     other.toCPU()
+                    other.stackExit()
 
                 if isinstance(res, Tensor):
                     res = retrieveTensorRef(res, self.proxyInfo.tensorsManager)
@@ -422,7 +435,16 @@ def createMagicWrapper(m):
                 ref, args, kwargs = levelTensorsArgs(args, kwargs, opts)
 
                 try:
+                    for arg in args:
+                        if isinstance(arg, TensorRef):
+                            arg.stackEnter()
+                            arg.onUsage()
+
                     res = magic(*args, **kwargs)
+
+                    for arg in args:
+                        if isinstance(arg, TensorRef):
+                            arg.stackExit()
 
                     if res is NotImplemented:
                         return getattr(TensorRef, '__'+m[3:])(ref, *args, **kwargs)

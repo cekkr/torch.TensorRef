@@ -100,15 +100,15 @@ class TensorRefsTracker:
         removes = False
 
         tensorRefs = copy.copy(self.tensorRefs)
-        for key, tensor in tensorRefs.items():
-            countRefs = sys.getrefcount(tensor)
-            if countRefs <= 5: # self.tensors + tensor + getrefcount(tensor) + tensors + self.refByTenso
+        for key, tensorRef in tensorRefs.items():
+            countRefs = sys.getrefcount(tensorRef)
+            if countRefs <= 6: # self.tensors + tensor + getrefcount(tensor) + tensors + self.refByTenso
                 if VERBOSE_TENSORS_TRACKER:
                     print("Removing unused tensorRef...")
 
                 removes = True
-                self.uncountTensor(tensor)
-                self.remTensorRef(tensor)
+                self.uncountTensor(tensorRef)
+                self.remTensorRef(tensorRef)
 
         tensors = copy.copy(self.tensors)
         for key, tensor in tensors.items():
