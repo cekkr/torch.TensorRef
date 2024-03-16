@@ -79,6 +79,8 @@ class TensorRefsTracker:
             pass
 
     def checkTensors(self):
+        removes = False
+
         tensorRefs = copy.copy(self.tensorRefs)
         for key, tensor in tensorRefs.items():
             countRefs = sys.getrefcount(tensor)
@@ -86,6 +88,7 @@ class TensorRefsTracker:
                 if VERBOSE_TENSORS_TRACKER:
                     print("Removing unused tensorRef...")
 
+                removes = True
                 self.uncountTensor(tensor)
                 self.remTensorRef(tensor)
 
@@ -96,8 +99,10 @@ class TensorRefsTracker:
                 if VERBOSE_TENSORS_TRACKER:
                     print("Removing unused tensor...")
 
+                removes = True
                 self.uncountTensor(tensor)
 
-        gc.collect()
-        clearCuda()
-        self.printStatus()
+        if removes:
+            gc.collect()
+            clearCuda()
+            self.printStatus()
