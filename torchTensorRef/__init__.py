@@ -48,8 +48,9 @@ injectTo = ['torch']
 exclude = [
             'torch.fx', 'torch.jit', 'torch.autograd', 'torchgen', 'torch.storage', 'functools', 'torch.utils', 'torch.library', 'torch.cuda',
             'torchTensorRef',
-            'torch._tensor', 'torch._C', 'torch._utils'
-            #'torch._'
+            #'torch._tensor', 'torch._C', 'torch._utils'
+            'torch._',
+            'torch.is_grad_enabled'
            ]
 
 def startsWith(str, arr):
