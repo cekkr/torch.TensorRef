@@ -146,7 +146,7 @@ class TensorRef(ABC, TensorRefBase):
                 for a in range(0, len(args)):
                     value = args[a]
                     if isinstance(value, Tensor):
-                        value = retrieveTensorRef(value, self.proxyManager.tensorsManager)
+                        value = retrieveTensorRef(value, self.proxyInfo.tensorsManager)
                     if isinstance(value, TensorRef):
                         proxies.append(value)
                         args[a] = value.toGPU()
@@ -163,7 +163,7 @@ class TensorRef(ABC, TensorRefBase):
                 for key, value in kwargs.items():
                     #print(f"{key}: {value}")
                     if isinstance(value, Tensor):
-                        value = retrieveTensorRef(value, self.proxyManager.tensorsManager)
+                        value = retrieveTensorRef(value, self.proxyInfo.tensorsManager)
                     if isinstance(value, TensorRef):
                         proxies.append(value)
                         kwargs[key] = value.toGPU()
@@ -179,7 +179,7 @@ class TensorRef(ABC, TensorRefBase):
                 self.toCPU()
 
                 def toRef(result):
-                    result = retrieveTensorRef(result, self.proxyManager.tensorsManager)
+                    result = retrieveTensorRef(result, self.proxyInfo.tensorsManager)
                     result.toCPU()
                     return result
 
@@ -303,7 +303,7 @@ def applyMagicMethod_math(op, dev=''):
                 withBaseTensor = False
                 if isinstance(other, Tensor):
                     #res = method(self.target, other)
-                    other = retrieveTensorRef(other, self.proxyManager.tensorsManager)
+                    other = retrieveTensorRef(other, self.proxyInfo.tensorsManager)
                     withBaseTensor = True
 
                 otherTarget = other
@@ -323,7 +323,7 @@ def applyMagicMethod_math(op, dev=''):
                     other.toCPU()
 
                 if isinstance(res, Tensor):
-                    res = retrieveTensorRef(res, self.proxyManager.tensorsManager)
+                    res = retrieveTensorRef(res, self.proxyInfo.tensorsManager)
                     res.toCPU()
 
                 self.toCPU()
