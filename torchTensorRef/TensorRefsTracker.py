@@ -30,6 +30,21 @@ class TensorRefsTracker:
         self.tensors = {}
         self.refByTensor = {}
 
+    def calculateSizes(self):
+        self.numOnCPU = 0
+        self.numOnGPU = 0
+        self.sizeOnCPU = 0
+        self.sizeOnGPU = 0
+
+        for key, tensor in self.tensors.items():
+            size = tensor.numel() * tensor.element_size()
+            if tensor.is_cpu:
+                self.numOnCPU += 1
+                self.sizeOnCPU += size
+            else:
+                self.numOnGPU += 1
+                self.sizeOnGPU += size
+
     def countTensor(self, tensorRef):
         tensor = tensorRef
         if isinstance(tensorRef, TensorRef):
@@ -52,17 +67,13 @@ class TensorRefsTracker:
             tensor = tensorRef.target
 
         idTensor = id(tensor)
+
         try:
-            del self.refByTensor[idTensor]
-        except:
+            del self.tensors[idTensor]
+        except Exception as err:
             pass
 
-        if idTensor in self.tensors:
-            try:
-                del self.tensors[idTensor]
-            except Exception as err:
-                pass
-
+        if idTensor in self.refByTensor:
             size = tensor.numel() * tensor.element_size() # in bytes
             if tensor.is_cpu:
                 self.numOnCPU -= 1
@@ -71,7 +82,13 @@ class TensorRefsTracker:
                 self.numOnGPU -= 1
                 self.sizeOnGPU -= size
 
+            try:
+                del self.refByTensor[idTensor]
+            except:
+                pass
+
     def printStatus(self):
+        # Memory limiter
         if self.sizeOnGPU > ((1024 ** 3)*1):
             orderedRefs = sorted(self.tensorRefs.values(), key=lambda x: x.proxyInfo.usageNs)
             if len(orderedRefs) > 0:
@@ -123,4 +140,6 @@ class TensorRefsTracker:
         if removes:
             gc.collect()
             clearCuda()
+
+            self.calculateSizes() # calculate size from scratch
             self.printStatus()

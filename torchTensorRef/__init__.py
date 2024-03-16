@@ -138,7 +138,7 @@ def method_wrapper(func):
 
             for r in refs:
                 r.toCPU()
-                r.uncount()
+                #r.uncount()
                 r.stackExit()
 
             methodStack = methodStack.exit()
