@@ -1,5 +1,6 @@
 from .common import VERBOSE_TENSORS_TRACKER
 import sys
+import copy
 
 TensorRef = None
 
@@ -61,9 +62,10 @@ class TensorRefsTracker:
         print('CPU Size:\t '+str(cpuGB)+'GB \t GPU Size:\t '+str(gpuGB)+'GB')
 
     def checkTensors(self):
-        for key, tensor in self.tensors.items():
+        tensors = copy.copy(self.tensors)
+        for key, tensor in tensors.items():
             countRefs = sys.getrefcount(tensor)
-            if countRefs <= 2: # 1 + self.tensors
+            if countRefs <= 5: # 1 + self.tensors + tensor + getrefcount(tensor) + items
                 if VERBOSE_TENSORS_TRACKER:
                     print("Removing unused tensor...")
 
