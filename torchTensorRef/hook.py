@@ -1,5 +1,6 @@
 import inspect
 import copy
+from typing import Tuple
 
 origInspectSignature = inspect.signature
 
@@ -58,6 +59,26 @@ class Hooks:
                     setattr(nres, 'parameters', res.parameters)
                     setattr(nres, 'return_annotation', props['tensor'])
                     res = nres
+
+                if res.return_annotation is Tuple[TensorRefBase,TensorRefBase]: # boh
+                    nres = NewSignature()
+                    setattr(nres, 'parameters', res.parameters)
+                    setattr(nres, 'return_annotation', Tuple[props['tensor'], props['tensor']])
+                    res = nres
+
+                '''
+                if isinstance(res.return_annotation, tuple):
+                    types = list(res.return_annotation)
+                    for t in range(0, len(types)):
+                        if types[t] is TensorRefBase:
+                            types[t] = props['tensor']
+                    types = tuple(types)
+
+                    nres = NewSignature()
+                    setattr(nres, 'parameters', res.parameters)
+                    setattr(nres, 'return_annotation', types)
+                    res = nres
+                '''
 
             return res
 
