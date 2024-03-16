@@ -27,7 +27,7 @@ def levelArg(arg, ref):
             arg[a] = levelArg(arg[a], ref)
     return arg
 
-def levelTensorsArgs(args, kwargs, opts):
+def levelTensorsArgs(args, kwargs, opts={}):
     if len(args) == 0:
         return None, args, kwargs
 
