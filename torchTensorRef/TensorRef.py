@@ -103,6 +103,10 @@ class TensorRef(ABC, TensorRefBase):
                 if VERBOSE_HOOK:            
                     print(f"Calling {name}")
 
+                if name != 'set_':
+                    self.toGPU()
+                attr = getattr(self.target, name) # you have to retrieve it again
+
                 # look for tensors on CPU
                 proxies = []
                 args = list(args)
@@ -131,6 +135,9 @@ class TensorRef(ABC, TensorRefBase):
                         proxies.append(value)
                         kwargs[key] = value.toGPU()
 
+                if name == 'chunk':
+                    print("debug")
+
                 # Perform the call to the original function
                 result = attr(*args, **kwargs)
                 # Optionally, process the result before returning
@@ -139,12 +146,26 @@ class TensorRef(ABC, TensorRefBase):
                 for value in proxies:
                     value.toCPU()
 
+                self.toCPU()
+
+                def toRef(result):
+                    result = TensorRef(result, self.proxyInfo.tensorsManager)
+                    result.toCPU()
+                    return result
+
                 if isinstance(result, Tensor):
                     if name == "cpu":
                         self.target = result
                     else:
-                        result = TensorRef(result, self.proxyInfo.tensorsManager)
-                        result.toCPU()
+                        result = toRef(result)
+                elif isinstance(result, (list, tuple)): #todo: do the same in fun hook
+                    l = list(result)
+                    for i in range(0, len(l)):
+                        l[i] = toRef(l[i])
+                    if isinstance(result, tuple):
+                        result = tuple(l)
+                    else:
+                        result = l
 
                 if VERBOSE_HOOK:            
                     print(f"Returning {name}")
