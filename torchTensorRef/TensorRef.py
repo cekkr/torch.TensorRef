@@ -5,6 +5,9 @@ from functools import partial
 
 from .common import tensorsManager, VERBOSE_HOOK
 from .hook import TensorRefBase
+from .TensorRefsTracker import TensorRefsTracker
+
+tensorRefsTracker = TensorRefsTracker()
 
 class ProxyInfo:
     def __init__(self):
@@ -56,6 +59,8 @@ class TensorRef(ABC, TensorRefBase):
         setattr(self, "target", target)
         setattr(self, "proxyInfo", ProxyInfo())
         self.proxyInfo.tensorsManager = tensorsManager
+
+        tensorRefsTracker.countTensor(target)
 
     def __setattr__(self, key, value):
         if key == "proxyInfo" or key == "target":
@@ -188,7 +193,12 @@ class TensorRef(ABC, TensorRefBase):
                     dt = self.target.dtype
                     if dt is torch.float64:
                         dt = torch.float32
+
+                    tensorRefsTracker.uncountTensor(self.target)
                     res = self.target.to(device=dev, dtype=dt)
+                    tensorRefsTracker.countTensor(res)
+                    tensorRefsTracker.printStatus()
+
                     if isinstance(self.target, torch.nn.Parameter) and not isinstance(res, torch.nn.Parameter):
                         res = torch.nn.Parameter(res)
                     else:
@@ -201,8 +211,11 @@ class TensorRef(ABC, TensorRefBase):
     def toCPU(self):
         if isinstance(self.target, Tensor):
             if not self.target.is_cpu:
-                self.target = self.target.to(device="cpu")
+                tensorRefsTracker.uncountTensor(self.target)
+                self.target = self.target.to(device="cpu")                
                 #self.target = self.target.to(torch.get_default_dtype()) # ensure Tensor default type
+                tensorRefsTracker.countTensor(self.target)
+                tensorRefsTracker.printStatus()
 
         return self.target
 
