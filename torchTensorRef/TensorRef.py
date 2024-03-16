@@ -10,18 +10,33 @@ from .TensorRefsTracker import TensorRefsTracker, SetTensorRefType
 
 tensorRefsTracker = TensorRefsTracker()
 
+def retrieveTensorRef(tensor, tensorsManager=None):
+    idTensor = id(tensor)
+    if idTensor in tensorRefsTracker.refByTensor:
+        return tensorRefsTracker.refByTensor[idTensor]
+
+    if tensorsManager is not None:
+        return TensorRef(tensor, tensorsManager)
+
+    return None
+
 class ProxyInfo:
     def __init__(self):
         self.device = "cpu"
         self.usageNs = 0
+        self.locked = False
 
 def levelArg(arg, ref):
     if isinstance(arg, Tensor):
-        arg = TensorRef(arg, ref['tensorsManager'])
+        arg = retrieveTensorRef(arg, ref['tensorsManager'])
+        arg.proxyInfo.locked = True
     if isinstance(arg, TensorRef):
         ref['proxies'].append(arg)
         if not ref['onCPU']:
             arg = arg.toGPU()
+        else:
+            arg = arg.toCPU()
+
     if isinstance(arg, tuple):
         arg = list(arg)
         for a in range(0, len(arg)):
@@ -46,6 +61,12 @@ def levelTensorsArgs(args, kwargs, opts={}):
         ref['onCPU'] = opts['onCPU']
 
     args = list(args)
+
+    # Lock immediately TensorRefs
+    for arg in args:
+        if isinstance(arg, TensorRef):
+            arg.proxyInfo.locked = True
+
     for a in range(0, len(args)):
         args[a] = levelArg(args[a], ref)
     args = tuple(args)
@@ -125,7 +146,7 @@ class TensorRef(ABC, TensorRefBase):
                 for a in range(0, len(args)):
                     value = args[a]
                     if isinstance(value, Tensor):
-                        value = TensorRef(value, self.proxyManager.tensorsManager)
+                        value = retrieveTensorRef(value, self.proxyManager.tensorsManager)
                     if isinstance(value, TensorRef):
                         proxies.append(value)
                         args[a] = value.toGPU()
@@ -142,7 +163,7 @@ class TensorRef(ABC, TensorRefBase):
                 for key, value in kwargs.items():
                     #print(f"{key}: {value}")
                     if isinstance(value, Tensor):
-                        value = TensorRef(value, self.proxyManager.tensorsManager)
+                        value = retrieveTensorRef(value, self.proxyManager.tensorsManager)
                     if isinstance(value, TensorRef):
                         proxies.append(value)
                         kwargs[key] = value.toGPU()
@@ -158,7 +179,7 @@ class TensorRef(ABC, TensorRefBase):
                 self.toCPU()
 
                 def toRef(result):
-                    result = TensorRef(result, self.proxyInfo.tensorsManager)
+                    result = retrieveTensorRef(result, self.proxyManager.tensorsManager)
                     result.toCPU()
                     return result
 
@@ -170,7 +191,9 @@ class TensorRef(ABC, TensorRefBase):
                 elif isinstance(result, (list, tuple)): #todo: do the same in fun hook
                     l = list(result)
                     for i in range(0, len(l)):
-                        l[i] = toRef(l[i])
+                        ll = l[i]
+                        if isinstance(ll, Tensor):
+                            l[i] = toRef(ll)
                     if isinstance(result, tuple):
                         result = tuple(l)
                     else:
@@ -280,7 +303,7 @@ def applyMagicMethod_math(op, dev=''):
                 withBaseTensor = False
                 if isinstance(other, Tensor):
                     #res = method(self.target, other)
-                    other = TensorRef(other, self.proxyInfo.tensorsManager)
+                    other = retrieveTensorRef(other, self.proxyManager.tensorsManager)
                     withBaseTensor = True
 
                 otherTarget = other
@@ -300,9 +323,7 @@ def applyMagicMethod_math(op, dev=''):
                     other.toCPU()
 
                 if isinstance(res, Tensor):
-                    res = TensorRef(
-                        res, self.proxyInfo.tensorsManager
-                    )
+                    res = retrieveTensorRef(res, self.proxyManager.tensorsManager)
                     res.toCPU()
 
                 self.toCPU()
@@ -355,6 +376,7 @@ def createMagicWrapper(m):
 
                 opts = {}
 
+                # todo: __array__ issue fixed at the root (of calling numpy). Try to remove this and the next
                 if m == '__array__':  # conversion to numpy must be done on CPU
                     opts['onCPU'] = True
 
@@ -398,6 +420,7 @@ def createMagicWrapper(m):
                         return getattr(TensorRef, '__'+m[3:])(ref, *args, **kwargs)
 
                     for proxy in ref['proxies']:
+                        proxy.proxyInfo.locked = False
                         proxy.toCPU()
 
                     if isinstance(res, Tensor):
@@ -405,7 +428,7 @@ def createMagicWrapper(m):
                         if isinstance(self, TensorRef):
                             manager = self.proxyInfo.tensorsManager
 
-                        res = TensorRef(res, manager)
+                        res = retrieveTensorRef(res, manager)
                         res.toCPU()
 
                     return res

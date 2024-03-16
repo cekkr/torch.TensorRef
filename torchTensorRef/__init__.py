@@ -14,6 +14,7 @@ from .basic import Stack
 torch = None
 TensorRef = None
 tensorRefsTracker = None
+retrieveTensorRef = None
 
 def is_builtin_type(obj):
     builtin_types = (int, float, str, list, dict, tuple, set, bool, bytes)
@@ -110,7 +111,7 @@ def method_wrapper(func):
                 checkSelf(arg)
                 if TensorRef is not None:
                     if isinstance(arg, TorchTensor):
-                        args[a] = TensorRef(arg, tensorsManager)
+                        args[a] = retrieveTensorRef(arg, tensorsManager)
                     if isinstance(args[a], TensorRef):
                         refs.append(args[a])
                         res = args[a].toGPU()
@@ -142,7 +143,7 @@ def method_wrapper(func):
 
             if not _returnNormalTensor and TorchTensor is not None:
                 if isinstance(result, TorchTensor):
-                    ref = TensorRef(result, tensorsManager)
+                    ref = retrieveTensorRef(result, tensorsManager)
                     ref.toCPU()
                     return ref
 
@@ -480,6 +481,7 @@ def init():
     global TorchTensor
     global torch
     global tensorRefsTracker
+    global retrieveTensorRef
 
     builtins.__import__ = noisy_importer
 
@@ -492,7 +494,7 @@ def init():
 
     flushWrap()
 
-    from .TensorRef import TensorRef, tensorRefsTracker
+    from .TensorRef import TensorRef, tensorRefsTracker, retrieveTensorRef
 
     hook.props = { 'tensor': torch.Tensor, 'tensorRef': TensorRef }
 

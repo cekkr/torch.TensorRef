@@ -28,12 +28,14 @@ class TensorRefsTracker:
 
         self.tensorRefs = {}
         self.tensors = {}
+        self.refByTensor = {}
 
     def countTensor(self, tensorRef):
         tensor = tensorRef
         if isinstance(tensorRef, TensorRef):
             tensor = tensorRef.target
             self.tensorRefs[id(tensorRef)] = tensorRef
+            self.refByTensor[id(tensor)] = tensorRef
 
         self.tensors[id(tensor)] = tensor
         size = tensor.numel() * tensor.element_size() # in bytes
@@ -50,6 +52,11 @@ class TensorRefsTracker:
             tensor = tensorRef.target
 
         idTensor = id(tensor)
+        try:
+            del self.refByTensor[idTensor]
+        except:
+            pass
+
         if idTensor in self.tensors:
             try:
                 del self.tensors[idTensor]
@@ -67,12 +74,14 @@ class TensorRefsTracker:
     def printStatus(self):
         if self.sizeOnGPU > ((1024 ** 3)*1):
             orderedRefs = sorted(self.tensorRefs.values(), key=lambda x: x.proxyInfo.usageNs)
-            avgNs = sum(x.proxyInfo.usageNs for x in orderedRefs) / len(orderedRefs)
-            for ref in orderedRefs:
-                if ref.proxyInfo.usageNs < avgNs:
-                    ref.toCPU()
-                else:
-                    break
+            if len(orderedRefs) > 0:
+                avgNs = sum(x.proxyInfo.usageNs for x in orderedRefs) / len(orderedRefs)
+                for ref in orderedRefs:
+                    if ref.proxyInfo.usageNs < avgNs:
+                        if not ref.proxyInfo.locked:
+                            ref.toCPU()
+                    else:
+                        break
 
         if VERBOSE_TENSORS_TRACKER:
             print('Tensors:\t CPU: '+str(self.numOnCPU)+' \t GPU: '+str(self.numOnGPU))
@@ -93,7 +102,7 @@ class TensorRefsTracker:
         tensorRefs = copy.copy(self.tensorRefs)
         for key, tensor in tensorRefs.items():
             countRefs = sys.getrefcount(tensor)
-            if countRefs <= 5: # self.tensors + tensor + getrefcount(tensor) + tensors
+            if countRefs <= 5: # self.tensors + tensor + getrefcount(tensor) + tensors + self.refByTenso
                 if VERBOSE_TENSORS_TRACKER:
                     print("Removing unused tensorRef...")
 
