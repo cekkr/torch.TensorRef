@@ -13,6 +13,7 @@ from .basic import Stack
 
 torch = None
 TensorRef = None
+tensorRefsTracker = None
 
 def is_builtin_type(obj):
     builtin_types = (int, float, str, list, dict, tuple, set, bool, bytes)
@@ -142,6 +143,8 @@ def method_wrapper(func):
                     ref = TensorRef(result, tensorsManager)
                     ref.toCPU()
                     return ref
+
+            tensorRefsTracker.checkTensors()
 
             return result
 
@@ -474,6 +477,7 @@ def init():
     global TensorRef
     global TorchTensor
     global torch
+    global tensorRefsTracker
 
     builtins.__import__ = noisy_importer
 
@@ -486,7 +490,7 @@ def init():
 
     flushWrap()
 
-    from .TensorRef import TensorRef
+    from .TensorRef import TensorRef, tensorRefsTracker
 
     hook.props = { 'tensor': torch.Tensor, 'tensorRef': TensorRef }
 

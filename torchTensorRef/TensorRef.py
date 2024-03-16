@@ -5,7 +5,7 @@ from functools import partial
 
 from .common import tensorsManager, VERBOSE_HOOK
 from .hook import TensorRefBase
-from .TensorRefsTracker import TensorRefsTracker
+from .TensorRefsTracker import TensorRefsTracker, SetTensorRefType
 
 tensorRefsTracker = TensorRefsTracker()
 
@@ -144,9 +144,6 @@ class TensorRef(ABC, TensorRefBase):
                         proxies.append(value)
                         kwargs[key] = value.toGPU()
 
-                if name == 'chunk':
-                    print("debug")
-
                 # Perform the call to the original function
                 result = attr(*args, **kwargs)
                 # Optionally, process the result before returning
@@ -179,6 +176,8 @@ class TensorRef(ABC, TensorRefBase):
                 if VERBOSE_HOOK:            
                     print(f"Returning {name}")
 
+                tensorRefsTracker.checkTensors()
+
                 return result
 
             return wrapper
@@ -194,10 +193,8 @@ class TensorRef(ABC, TensorRefBase):
                     if dt is torch.float64:
                         dt = torch.float32
 
-                    tensorRefsTracker.uncountTensor(self.target)
-                    res = self.target.to(device=dev, dtype=dt)
-                    tensorRefsTracker.countTensor(res)
-                    tensorRefsTracker.printStatus()
+                    tensorRefsTracker.uncountTensor(self)
+                    res = self.target.to(device=dev, dtype=dt)                    
 
                     if isinstance(self.target, torch.nn.Parameter) and not isinstance(res, torch.nn.Parameter):
                         res = torch.nn.Parameter(res)
@@ -206,15 +203,18 @@ class TensorRef(ABC, TensorRefBase):
                         pass
                     self.target = res
 
+                    tensorRefsTracker.countTensor(self)
+                    tensorRefsTracker.printStatus()
+
         return self.target
 
     def toCPU(self):
         if isinstance(self.target, Tensor):
             if not self.target.is_cpu:
-                tensorRefsTracker.uncountTensor(self.target)
+                tensorRefsTracker.uncountTensor(self)
                 self.target = self.target.to(device="cpu")                
                 #self.target = self.target.to(torch.get_default_dtype()) # ensure Tensor default type
-                tensorRefsTracker.countTensor(self.target)
+                tensorRefsTracker.countTensor(self)
                 tensorRefsTracker.printStatus()
 
         return self.target
@@ -238,6 +238,8 @@ class TensorRef(ABC, TensorRefBase):
             return TensorRef(res, self.proxyInfo.tensorsManager)
 
         return res
+
+SetTensorRefType(TensorRef)
 
 #TensorRef.register(Tensor)
 #TensorRef.register(torch.nn.Parameter)
