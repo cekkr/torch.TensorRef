@@ -102,7 +102,7 @@ class TensorRefsTracker:
         tensorRefs = copy.copy(self.tensorRefs)
         for key, tensorRef in tensorRefs.items():
             countRefs = sys.getrefcount(tensorRef)
-            if countRefs <= 6: # self.tensors + tensor + getrefcount(tensor) + tensors + self.refByTenso
+            if countRefs <= 6 and not tensorRef.proxyInfo.locked: # self.tensors + tensor + getrefcount(tensor) + tensors + self.refByTenso
                 if VERBOSE_TENSORS_TRACKER:
                     print("Removing unused tensorRef...")
 
