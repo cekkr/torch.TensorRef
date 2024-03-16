@@ -124,6 +124,9 @@ def method_wrapper(func):
                     '''
             args = tuple(args)
 
+            for ref in refs:
+                ref.onUsage()
+
             #if name == 'torch.group_norm':
             #    print("debug")
 

@@ -65,14 +65,21 @@ class TensorRefsTracker:
                 self.sizeOnGPU -= size
 
     def printStatus(self):
-        if not VERBOSE_TENSORS_TRACKER:
-            return
+        if self.sizeOnGPU > ((1024 ** 3)*1):
+            orderedRefs = sorted(self.tensorRefs.values(), key=lambda x: x.proxyInfo.usageNs)
+            avgNs = sum(x.proxyInfo.usageNs for x in orderedRefs) / len(orderedRefs)
+            for ref in orderedRefs:
+                if ref.proxyInfo.usageNs < avgNs:
+                    ref.toCPU()
+                else:
+                    break
 
-        print('Tensors:\t CPU: '+str(self.numOnCPU)+' \t GPU: '+str(self.numOnGPU))
+        if VERBOSE_TENSORS_TRACKER:
+            print('Tensors:\t CPU: '+str(self.numOnCPU)+' \t GPU: '+str(self.numOnGPU))
 
-        cpuGB = self.sizeOnCPU / (1024) ** 3
-        gpuGB = self.sizeOnGPU / (1024) ** 3
-        print('CPU Size:\t '+str(cpuGB)+'GB \t GPU Size:\t '+str(gpuGB)+'GB')
+            cpuGB = self.sizeOnCPU / (1024) ** 3
+            gpuGB = self.sizeOnGPU / (1024) ** 3
+            print('CPU Size:\t '+str(cpuGB)+'GB \t GPU Size:\t '+str(gpuGB)+'GB')
 
     def remTensorRef(self, tensor):
         try:

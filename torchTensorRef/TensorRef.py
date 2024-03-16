@@ -2,6 +2,7 @@ import torch
 from torch import Tensor
 from abc import ABC
 from functools import partial
+import time
 
 from .common import tensorsManager, VERBOSE_HOOK
 from .hook import TensorRefBase
@@ -12,6 +13,7 @@ tensorRefsTracker = TensorRefsTracker()
 class ProxyInfo:
     def __init__(self):
         self.device = "cpu"
+        self.usageNs = 0
 
 def levelArg(arg, ref):
     if isinstance(arg, Tensor):
@@ -60,8 +62,8 @@ class TensorRef(ABC, TensorRefBase):
         setattr(self, "proxyInfo", ProxyInfo())
         self.proxyInfo.tensorsManager = tensorsManager
 
-        tensorRefsTracker.countTensor(self)
-        tensorRefsTracker.remTensorRef(self)
+        tensorRefsTracker.countTensor(self)        
+        self.onUsage()
 
     def __setattr__(self, key, value):
         if key == "proxyInfo" or key == "target":
@@ -184,6 +186,9 @@ class TensorRef(ABC, TensorRefBase):
             return wrapper
         else:
             return attr
+        
+    def onUsage(self):
+        self.proxyInfo.usageNs = (time.time_ns() + self.proxyInfo.usageNs)/2
 
     def toGPU(self):
         if isinstance(self.target, Tensor):
@@ -223,6 +228,7 @@ class TensorRef(ABC, TensorRefBase):
 
     def uncount(self):
         tensorRefsTracker.uncountTensor(self)
+        tensorRefsTracker.remTensorRef(self)
 
     ### Iterate
 
