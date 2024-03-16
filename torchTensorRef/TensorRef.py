@@ -298,7 +298,9 @@ def applyMagicMethod_math(op, dev=''):
                 if VERBOSE_HOOK:
                     print('TRef Math: ', m)
 
+                self.proxyInfo.locked = True
                 self.toGPU()
+
                 res = None
                 withBaseTensor = False
                 if isinstance(other, Tensor):
@@ -308,9 +310,14 @@ def applyMagicMethod_math(op, dev=''):
 
                 otherTarget = other
                 if isinstance(other, TensorRef):
+                    other.proxyInfo.locked = True
                     otherTarget = other.toGPU()
+                else:
+                    print("Debug: this shouldn't happen 0x45647538")
 
                 res = method(self.target, otherTarget)
+
+                self.proxyInfo.locked = False
 
                 if res is NotImplemented:
                     if op == '__pow__':
@@ -320,6 +327,7 @@ def applyMagicMethod_math(op, dev=''):
                         raise Exception("Not implemented")
 
                 if isinstance(other, TensorRef):
+                    other.proxyInfo.locked = False
                     other.toCPU()
 
                 if isinstance(res, Tensor):
