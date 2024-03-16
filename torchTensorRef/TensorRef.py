@@ -60,7 +60,7 @@ class TensorRef(ABC, TensorRefBase):
         setattr(self, "proxyInfo", ProxyInfo())
         self.proxyInfo.tensorsManager = tensorsManager
 
-        tensorRefsTracker.countTensor(target)
+        tensorRefsTracker.countTensor(self)
 
     def __setattr__(self, key, value):
         if key == "proxyInfo" or key == "target":
@@ -201,6 +201,7 @@ class TensorRef(ABC, TensorRefBase):
                     else:
                         #res = res.to(torch.get_default_dtype())
                         pass
+
                     self.target = res
 
                     tensorRefsTracker.countTensor(self)
@@ -218,6 +219,9 @@ class TensorRef(ABC, TensorRefBase):
                 tensorRefsTracker.printStatus()
 
         return self.target
+
+    def uncount(self):
+        tensorRefsTracker.uncountTensor(self)
 
     ### Iterate
 

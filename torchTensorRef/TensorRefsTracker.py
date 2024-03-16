@@ -22,8 +22,7 @@ class TensorRefsTracker:
         tensor = tensorRef
         if isinstance(tensorRef, TensorRef):
             tensor = tensorRef.target
-
-        self.tensors[id(tensor)] = tensor
+            self.tensors[id(tensorRef)] = tensorRef
 
         size = tensor.numel() * tensor.element_size() # in bytes
         if tensor.is_cpu:
@@ -37,11 +36,6 @@ class TensorRefsTracker:
         tensor = tensorRef
         if isinstance(tensorRef, TensorRef):
             tensor = tensorRef.target
-
-        try:
-            del self.tensors[id(tensor)]
-        except Exception as err:
-            pass
 
         size = tensor.numel() * tensor.element_size() # in bytes
         if tensor.is_cpu:
@@ -65,9 +59,14 @@ class TensorRefsTracker:
         tensors = copy.copy(self.tensors)
         for key, tensor in tensors.items():
             countRefs = sys.getrefcount(tensor)
-            if countRefs <= 5: # 1 + self.tensors + tensor + getrefcount(tensor) + items
+            if countRefs <= 4: # self.tensors + tensor + getrefcount(tensor) + tensors
                 if VERBOSE_TENSORS_TRACKER:
                     print("Removing unused tensor...")
 
                 self.uncountTensor(tensor)
                 self.printStatus()
+
+                try:
+                    del self.tensors[id(tensor)]
+                except Exception as err:
+                    pass
