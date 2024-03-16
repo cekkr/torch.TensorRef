@@ -25,7 +25,7 @@ class TensorRefsTracker:
             tensor = tensorRef.target
             self.tensorRefs[id(tensorRef)] = tensorRef
 
-        self.tensors[id(tensors)] = tensors
+        self.tensors[id(tensor)] = tensor
         size = tensor.numel() * tensor.element_size() # in bytes
         if tensor.is_cpu:
             self.numOnCPU += 1
