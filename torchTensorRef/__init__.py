@@ -113,7 +113,7 @@ def method_wrapper(func):
                         args = retrieveTensorRef(arg, tensorsManager)
                     if isinstance(arg, TensorRef):
                         refs.append(arg)
-                        #arg.toGPU()
+                        arg.toGPU()
                     if isinstance(arg, torch.nn.Module):
                         props = dir(arg)
                         embeddings.append(embeddings)
