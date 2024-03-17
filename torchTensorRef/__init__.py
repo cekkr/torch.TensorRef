@@ -106,6 +106,7 @@ def method_wrapper(func):
             args = list(args)
 
             refs = []
+            embeddings = []
             for a in range(0, len(args)):
                 arg = args[a]
                 checkSelf(arg)
@@ -117,6 +118,13 @@ def method_wrapper(func):
                         res = args[a].toGPU()
                         if not passTensorRefs:
                             args[a] = res
+                    if isinstance(arg, torch.nn.Embedding):
+                        props = dir(arg)
+                        for p in props:
+                            tensor = getattr(arg, p)
+                            if isinstance(tensor, TorchTensor):
+                                ref = retrieveTensorRef(tensor, tensorsManager)
+                                setattr(arg, p, ref.toGPU())
                     '''
                     else:
                         # https://github.com/huggingface/accelerate/blob/main/src/accelerate/big_modeling.py
@@ -140,6 +148,14 @@ def method_wrapper(func):
                 r.toCPU()
                 #r.uncount()
                 r.stackExit()
+
+            for e in embeddings:
+                props = dir(e)
+                for p in props:
+                    tensor = getattr(arg, p)
+                    if isinstance(tensor, TorchTensor):
+                        ref = retrieveTensorRef(tensor, tensorsManager)
+                        setattr(e, p, ref.toGPU())
 
             methodStack = methodStack.exit()
 
