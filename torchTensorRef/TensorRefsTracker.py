@@ -139,7 +139,7 @@ class TensorRefsTracker:
             pass
 
     def gcCollect(self):
-        return
+        #return
         gc.collect()
         clearCuda()
 
@@ -161,12 +161,14 @@ class TensorRefsTracker:
                         print("Removing unused tensorRef...")
 
                     removes = True
-                    self.uncountTensor(tensorRef, True)
+                    self.uncountTensor(tensorRef, False)
                     self.remTensorRef(tensorRef)
                     tensorRef.target = None
                 else:
                     print("Impossible to remove locked tensorRef")
 
+        # Pretty useless double checking
+        '''
         tensors = copy.copy(self.tensors)
         for key, tensor in tensors.items():
             countRefs = sys.getrefcount(tensor)
@@ -176,7 +178,8 @@ class TensorRefsTracker:
 
                 removes = True
                 self.uncountTensor(tensor, False)
-
+        '''
+        
         if removes:
             self.gcCollect()
             #self.calculateSizes() # calculate size from scratch
