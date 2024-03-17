@@ -98,15 +98,15 @@ class TensorRefsTracker:
                 #tensor.detach()
 
         try:
-            #ref = self.refByTensor[idTensor]
-            #del self.tensorByRef[id(ref)]
             del self.refByTensor[idTensor]
+            ref = self.refByTensor[idTensor]
+            del self.tensorByRef[id(ref)]
         except:
             pass
 
         # debug purposes
-        count = sys.getrefcount(tensor)
-        print(count)
+        #count = sys.getrefcount(tensor)
+        #print(count)
 
     def printStatus(self):
         # Memory limiter

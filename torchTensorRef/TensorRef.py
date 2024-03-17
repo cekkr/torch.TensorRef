@@ -280,6 +280,7 @@ class TensorRef(ABC, TensorRefBase):
                 if isinstance(self.target, torch.nn.Parameter) and not isinstance(res, torch.nn.Parameter):
                     res = torch.nn.Parameter(res)
 
+                self.target = res
                 tensorRefsTracker.countTensor(self)
             else:
                 pass
