@@ -105,7 +105,7 @@ def method_wrapper(func):
             if name.startswith('torch._refs') or name == 'torch.group_norm':
                 methodStack.set('inOp', True)
 
-            refAsGPU = True
+            refAsGPU = False
 
             refs = []
             embeddings = []
