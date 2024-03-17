@@ -88,7 +88,8 @@ class TensorRef(ABC, TensorRefBase):
         self.onUsage()
 
     def __del__(self):
-        tensorRefsTracker.uncountTensor(self)
+        #tensorRefsTracker.uncountTensor(self)
+        tensorRefsTracker.remTensorRef(self)
 
     def __setattr__(self, key, value):
         if key == "proxyInfo" or key == "target":

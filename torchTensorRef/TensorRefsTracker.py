@@ -31,7 +31,7 @@ class TensorRefsTracker:
         self.tensorRefs = {}
         self.tensors = {}
         self.refByTensor = {}
-        #self.tensorByRef = {} # a checker dict, useless, remove it. damn.
+        self.tensorByRef = {} # a checker dict, probably useless
 
     def calculateSizes(self):
         self.numOnCPU = 0
@@ -53,15 +53,14 @@ class TensorRefsTracker:
 
         if isinstance(tensorRef, TensorRef):
             tensorRefId = id(tensorRef)
-            '''
             if tensorRefId in self.tensorByRef:
                 prevTensor = self.tensorByRef[tensorRefId]
                 self.uncountTensor(prevTensor)
-            '''
+
             tensor = tensorRef.target
             self.tensorRefs[tensorRefId] = tensorRef
             self.refByTensor[id(tensor)] = tensorRef
-            #self.tensorByRef[tensorRefId] = tensor
+            self.tensorByRef[tensorRefId] = tensor
 
         self.tensors[id(tensor)] = tensor
         size = tensor.numel() * tensor.element_size() # in bytes
@@ -76,6 +75,7 @@ class TensorRefsTracker:
         tensor = tensorRef
         if isinstance(tensorRef, TensorRef):
             tensor = tensorRef.target
+            del self.tensorByRef[id(tensorRef)]
 
         idTensor = id(tensor)
 
@@ -84,15 +84,14 @@ class TensorRefsTracker:
         except Exception as err:
             pass
 
-        if idTensor in self.refByTensor:
-            size = tensor.numel() * tensor.element_size() # in bytes
-            if tensor.is_cpu:
-                self.numOnCPU -= 1
-                self.sizeOnCPU -= size
-            else:
-                self.numOnGPU -= 1
-                self.sizeOnGPU -= size
-                #tensor.detach()
+        size = tensor.numel() * tensor.element_size() # in bytes
+        if tensor.is_cpu:
+            self.numOnCPU -= 1
+            self.sizeOnCPU -= size
+        else:
+            self.numOnGPU -= 1
+            self.sizeOnGPU -= size
+            #tensor.detach()
 
         try:
             #ref = self.refByTensor[idTensor]
@@ -126,6 +125,7 @@ class TensorRefsTracker:
         try:
             del self.tensorRefs[id(tensorRef)]
             del self.refByTensor[id(tensorRef.target)]
+            del self.tensorByRef[id(tensorRef)]
         except Exception as err:
             pass
 
@@ -159,7 +159,7 @@ class TensorRefsTracker:
         tensors = copy.copy(self.tensors)
         for key, tensor in tensors.items():
             countRefs = sys.getrefcount(tensor)
-            if countRefs <= properties['minRefsTensor'] + 1:  # self.tensors + tensor + getrefcount(tensor) + tensors
+            if countRefs <= properties['minRefsTensor']:  # self.tensors + tensor + getrefcount(tensor) + tensors
                 if VERBOSE_TENSORS_TRACKER:
                     print("Removing unused tensor...")
 
