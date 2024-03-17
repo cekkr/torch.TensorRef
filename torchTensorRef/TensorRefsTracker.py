@@ -163,7 +163,7 @@ class TensorRefsTracker:
                     print("Removing unused tensor...")
 
                 removes = True
-                self.uncountTensor(tensor)
+                #self.uncountTensor(tensor)
 
         if removes:
             self.gcCollect()

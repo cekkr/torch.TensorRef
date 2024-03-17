@@ -87,6 +87,9 @@ class TensorRef(ABC, TensorRefBase):
         tensorRefsTracker.countTensor(self)        
         self.onUsage()
 
+    def __del__(self):
+        tensorRefsTracker.uncountTensor(self)
+
     def __setattr__(self, key, value):
         if key == "proxyInfo" or key == "target":
             super().__setattr__(key, value)
@@ -240,7 +243,7 @@ class TensorRef(ABC, TensorRefBase):
                     tensorRefsTracker.printStatus()
             else:
                 pass
-            
+
         return self.target
 
     def toCPU(self):
