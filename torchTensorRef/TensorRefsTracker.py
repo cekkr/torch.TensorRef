@@ -31,7 +31,7 @@ class TensorRefsTracker:
         self.tensorRefs = {}
         self.tensors = {}
         self.refByTensor = {}
-        self.tensorByRef = {} # a checker dict, useless, remove it. damn.
+        #self.tensorByRef = {} # a checker dict, useless, remove it. damn.
 
     def calculateSizes(self):
         self.numOnCPU = 0
@@ -53,14 +53,15 @@ class TensorRefsTracker:
 
         if isinstance(tensorRef, TensorRef):
             tensorRefId = id(tensorRef)
+            '''
             if tensorRefId in self.tensorByRef:
                 prevTensor = self.tensorByRef[tensorRefId]
                 self.uncountTensor(prevTensor)
-
+            '''
             tensor = tensorRef.target
             self.tensorRefs[tensorRefId] = tensorRef
             self.refByTensor[id(tensor)] = tensorRef
-            self.tensorByRef[tensorRefId] = tensor
+            #self.tensorByRef[tensorRefId] = tensor
 
         self.tensors[id(tensor)] = tensor
         size = tensor.numel() * tensor.element_size() # in bytes
@@ -95,8 +96,8 @@ class TensorRefsTracker:
         tensor.detach()
 
         try:
-            ref = self.refByTensor[idTensor]
-            del self.tensorByRef[id(ref)]
+            #ref = self.refByTensor[idTensor]
+            #del self.tensorByRef[id(ref)]
             del self.refByTensor[idTensor]
         except:
             pass                
@@ -125,6 +126,7 @@ class TensorRefsTracker:
     def remTensorRef(self, tensorRef):
         try:
             del self.tensorRefs[id(tensorRef)]
+            del self.refByTensor[id(tensorRef.target)]
         except Exception as err:
             pass
 
@@ -144,7 +146,7 @@ class TensorRefsTracker:
         tensorRefs = copy.copy(self.tensorRefs)
         for key, tensorRef in tensorRefs.items():
             countRefs = sys.getrefcount(tensorRef)
-            if countRefs <= properties['minRefsTensorRef']: # self.tensorRefs + tensorRef + getrefcount(tensorRef) + tensorRefs + self.refByTensor
+            if countRefs <= properties['minRefsTensorRef'] + 1: # self.tensorRefs + tensorRef + getrefcount(tensorRef) + tensorRefs + self.refByTensor
                 if not tensorRef.proxyInfo.locked:
                     if VERBOSE_TENSORS_TRACKER:
                         print("Removing unused tensorRef...")
@@ -158,7 +160,7 @@ class TensorRefsTracker:
         tensors = copy.copy(self.tensors)
         for key, tensor in tensors.items():
             countRefs = sys.getrefcount(tensor)
-            if countRefs <= properties['minRefsTensor']:  # self.tensors + tensor + getrefcount(tensor) + tensors
+            if countRefs <= properties['minRefsTensor'] + 1:  # self.tensors + tensor + getrefcount(tensor) + tensors
                 if VERBOSE_TENSORS_TRACKER:
                     print("Removing unused tensor...")
 
