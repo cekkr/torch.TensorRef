@@ -81,11 +81,12 @@ class TensorRefsTracker:
             else:
                 self.numOnGPU -= 1
                 self.sizeOnGPU -= size
+                tensor.detach()
 
             try:
                 del self.refByTensor[idTensor]
             except:
-                pass
+                pass                
 
     def printStatus(self):
         # Memory limiter
@@ -99,6 +100,7 @@ class TensorRefsTracker:
                             ref.toCPU()
                     else:
                         break
+            self.gcCollect()
 
         if VERBOSE_TENSORS_TRACKER:
             print('Tensors:\t CPU: '+str(self.numOnCPU)+' \t GPU: '+str(self.numOnGPU))
@@ -113,13 +115,17 @@ class TensorRefsTracker:
         except Exception as err:
             pass
 
+    def gcCollect(self):
+        gc.collect()
+        clearCuda()
+
     def checkTensors(self):
         removes = False
 
         tensorRefs = copy.copy(self.tensorRefs)
         for key, tensorRef in tensorRefs.items():
             countRefs = sys.getrefcount(tensorRef)
-            if countRefs <= 6 and not tensorRef.proxyInfo.locked: # self.tensors + tensor + getrefcount(tensor) + tensors + self.refByTenso
+            if countRefs <= 5 and not tensorRef.proxyInfo.locked: # self.tensors + tensor + getrefcount(tensor) + tensors + self.refByTenso
                 if VERBOSE_TENSORS_TRACKER:
                     print("Removing unused tensorRef...")
 
@@ -130,7 +136,7 @@ class TensorRefsTracker:
         tensors = copy.copy(self.tensors)
         for key, tensor in tensors.items():
             countRefs = sys.getrefcount(tensor)
-            if countRefs <= 5:  # self.tensors + tensor + getrefcount(tensor) + tensors
+            if countRefs <= 4:  # self.tensors + tensor + getrefcount(tensor) + tensors
                 if VERBOSE_TENSORS_TRACKER:
                     print("Removing unused tensor...")
 
@@ -138,8 +144,7 @@ class TensorRefsTracker:
                 self.uncountTensor(tensor)
 
         if removes:
-            gc.collect()
-            clearCuda()
+            self.gcCollect()
 
             self.calculateSizes() # calculate size from scratch
             self.printStatus()
