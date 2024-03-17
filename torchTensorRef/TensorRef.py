@@ -238,7 +238,9 @@ class TensorRef(ABC, TensorRefBase):
 
                     tensorRefsTracker.countTensor(self)
                     tensorRefsTracker.printStatus()
-
+            else:
+                pass
+            
         return self.target
 
     def toCPU(self):
@@ -250,6 +252,8 @@ class TensorRef(ABC, TensorRefBase):
                 #self.target = self.target.to(torch.get_default_dtype()) # ensure Tensor default type
                 tensorRefsTracker.countTensor(self)
                 tensorRefsTracker.printStatus()
+            else:
+                pass
 
         return self.target
 
