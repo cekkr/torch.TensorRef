@@ -107,13 +107,13 @@ def method_wrapper(func):
 
             result = None
 
-            if not wrapArguments:
+            if not classWrapper.wrapArguments:
                 try:
                     result = func(*args, **kwargs)
                 except:
-                    wrapArguments = True
+                    classWrapper.wrapArguments = True
 
-            if wrapArguments:
+            if classWrapper.wrapArguments:
                 args = list(args)
 
                 refs = []
@@ -180,6 +180,7 @@ def method_wrapper(func):
 
             return result
 
+    classWrapper.wrapArguments = False
     wrapper = classWrapper.funWrapper
 
     try:
