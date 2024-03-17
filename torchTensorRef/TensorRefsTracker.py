@@ -109,9 +109,9 @@ class TensorRefsTracker:
             gpuGB = self.sizeOnGPU / (1024) ** 3
             print('CPU Size:\t '+str(cpuGB)+'GB \t GPU Size:\t '+str(gpuGB)+'GB')
 
-    def remTensorRef(self, tensor):
+    def remTensorRef(self, tensorRef):
         try:
-            del self.tensorRefs[id(tensor)]
+            del self.tensorRefs[id(tensorRef)]
         except Exception as err:
             pass
 
@@ -125,7 +125,7 @@ class TensorRefsTracker:
         tensorRefs = copy.copy(self.tensorRefs)
         for key, tensorRef in tensorRefs.items():
             countRefs = sys.getrefcount(tensorRef)
-            if countRefs <= 5 and not tensorRef.proxyInfo.locked: # self.tensors + tensor + getrefcount(tensor) + tensors + self.refByTenso
+            if countRefs <= 6 and not tensorRef.proxyInfo.locked: # self.tensorRefs + tensorRef + getrefcount(tensorRef) + tensorRefs + self.refByTensor
                 if VERBOSE_TENSORS_TRACKER:
                     print("Removing unused tensorRef...")
 
