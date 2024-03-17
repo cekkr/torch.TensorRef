@@ -160,7 +160,7 @@ class TensorRefsTracker:
                         print("Removing unused tensorRef...")
 
                     removes = True
-                    #self.uncountTensor(tensorRef)
+                    self.uncountTensor(tensorRef, False)
                     self.remTensorRef(tensorRef)
                     tensorRef.target = None
                 else:
@@ -168,9 +168,8 @@ class TensorRefsTracker:
 
         tensors = copy.copy(self.tensors)
         for key, tensor in tensors.items():
-            #countRefs = sys.getrefcount(tensor)
-            #if countRefs <= properties['minRefsTensor'] + 1:  # self.tensors + tensor + getrefcount(tensor) + tensors
-            if id(tensor) not in self.refByTensor:
+            countRefs = sys.getrefcount(tensor)
+            if id(tensor) not in self.refByTensor or countRefs <= properties['minRefsTensor']:
                 if VERBOSE_TENSORS_TRACKER:
                     print("Removing unused tensor...")
 
@@ -179,6 +178,5 @@ class TensorRefsTracker:
 
         if removes:
             self.gcCollect()
-
             #self.calculateSizes() # calculate size from scratch
             self.printStatus()
