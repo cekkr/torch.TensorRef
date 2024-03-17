@@ -118,7 +118,7 @@ def method_wrapper(func):
                         res = args[a].toGPU()
                         if not passTensorRefs:
                             args[a] = res
-                    if isinstance(arg, torch.nn.Embedding):
+                    if isinstance(arg, torch.nn.Module):
                         props = dir(arg)
                         for p in props:
                             tensor = getattr(arg, p)
@@ -155,7 +155,7 @@ def method_wrapper(func):
                     tensor = getattr(arg, p)
                     if isinstance(tensor, TorchTensor):
                         ref = retrieveTensorRef(tensor, tensorsManager)
-                        setattr(e, p, ref.toGPU())
+                        setattr(e, p, ref.toCPU())
 
             methodStack = methodStack.exit()
 
