@@ -71,7 +71,7 @@ class TensorRefsTracker:
             self.numOnGPU += 1
             self.sizeOnGPU += size
     
-    def uncountTensor(self, tensorRef):
+    def uncountTensor(self, tensorRef, countStats = True):
         tensor = tensorRef
         if isinstance(tensorRef, TensorRef):
             tensor = tensorRef.target
@@ -84,14 +84,15 @@ class TensorRefsTracker:
         except Exception as err:
             pass
 
-        size = tensor.numel() * tensor.element_size() # in bytes
-        if tensor.is_cpu:
-            self.numOnCPU -= 1
-            self.sizeOnCPU -= size
-        else:
-            self.numOnGPU -= 1
-            self.sizeOnGPU -= size
-            #tensor.detach()
+        if countStats:
+            size = tensor.numel() * tensor.element_size() # in bytes
+            if tensor.is_cpu:
+                self.numOnCPU -= 1
+                self.sizeOnCPU -= size
+            else:
+                self.numOnGPU -= 1
+                self.sizeOnGPU -= size
+                #tensor.detach()
 
         try:
             #ref = self.refByTensor[idTensor]
@@ -153,18 +154,19 @@ class TensorRefsTracker:
                     removes = True
                     #self.uncountTensor(tensorRef)
                     self.remTensorRef(tensorRef)
+                    tensorRef.target = None
                 else:
                     print("Impossible to remove locked tensorRef")
 
         tensors = copy.copy(self.tensors)
         for key, tensor in tensors.items():
             countRefs = sys.getrefcount(tensor)
-            if countRefs <= properties['minRefsTensor']:  # self.tensors + tensor + getrefcount(tensor) + tensors
+            if countRefs <= properties['minRefsTensor']+1:  # self.tensors + tensor + getrefcount(tensor) + tensors
                 if VERBOSE_TENSORS_TRACKER:
                     print("Removing unused tensor...")
 
                 removes = True
-                #self.uncountTensor(tensor)
+                self.uncountTensor(tensor, False)
 
         if removes:
             self.gcCollect()
