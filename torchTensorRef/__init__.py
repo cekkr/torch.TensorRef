@@ -105,15 +105,18 @@ def method_wrapper(func):
             if name.startswith('torch._refs') or name == 'torch.group_norm':
                 methodStack.set('inOp', True)
 
+            refAsGPU = False
+
             refs = []
             embeddings = []
             def argToRef(arg):
                 if TensorRef is not None:
                     if isinstance(arg, TorchTensor):
-                        args = retrieveTensorRef(arg, tensorsManager)
+                        arg = retrieveTensorRef(arg, tensorsManager)
                     if isinstance(arg, TensorRef):
                         refs.append(arg)
-                        arg.toGPU()
+                        if refAsGPU:
+                            arg.toGPU()
                     if isinstance(arg, torch.nn.Module):
                         props = dir(arg)
                         embeddings.append(embeddings)
@@ -121,7 +124,8 @@ def method_wrapper(func):
                             tensor = getattr(arg, p)
                             if isinstance(tensor, TorchTensor):
                                 ref = retrieveTensorRef(tensor, tensorsManager)
-                                ref.toGPU()
+                                if refAsGPU:
+                                    ref.toGPU()
                                 setattr(arg, p, ref)
                 return arg
 
@@ -146,7 +150,10 @@ def method_wrapper(func):
             if not classWrapper.argsAsRef:
                 def argToTensor(arg):
                     if isinstance(arg, TensorRef):
-                        arg = arg.target
+                        if refAsGPU:
+                            arg = arg.target
+                        else:
+                            arg = arg.toGPU()
                     return arg
 
                 args = list(args)

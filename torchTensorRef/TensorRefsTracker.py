@@ -179,7 +179,7 @@ class TensorRefsTracker:
                 removes = True
                 self.uncountTensor(tensor, False)
         '''
-        
+
         if removes:
             self.gcCollect()
             #self.calculateSizes() # calculate size from scratch
