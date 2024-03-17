@@ -4,6 +4,8 @@ import copy
 import gc
 import torch
 
+from .common import properties
+
 TensorRef = None
 
 def SetTensorRefType(tr):
@@ -118,13 +120,19 @@ class TensorRefsTracker:
         gc.collect()
         clearCuda()
 
+    def countTensorRefReferences(self, tensorRef):
+        # To returns effectively used references
+        #tensorRefs = copy.copy(self.tensorRefs)
+        #tensors = copy.copy(self.tensors)
+        return [sys.getrefcount(tensorRef), sys.getrefcount(tensorRef.target)]
+
     def checkTensors(self):
         removes = False
 
         tensorRefs = copy.copy(self.tensorRefs)
         for key, tensorRef in tensorRefs.items():
             countRefs = sys.getrefcount(tensorRef)
-            if countRefs <= 6 and not tensorRef.proxyInfo.locked: # self.tensorRefs + tensorRef + getrefcount(tensorRef) + tensorRefs + self.refByTensor
+            if countRefs <= properties['minRefsTensorRef'] and not tensorRef.proxyInfo.locked: # self.tensorRefs + tensorRef + getrefcount(tensorRef) + tensorRefs + self.refByTensor
                 if VERBOSE_TENSORS_TRACKER:
                     print("Removing unused tensorRef...")
 
@@ -135,7 +143,7 @@ class TensorRefsTracker:
         tensors = copy.copy(self.tensors)
         for key, tensor in tensors.items():
             countRefs = sys.getrefcount(tensor)
-            if countRefs <= 4:  # self.tensors + tensor + getrefcount(tensor) + tensors
+            if countRefs <= properties['minRefsTensor']:  # self.tensors + tensor + getrefcount(tensor) + tensors
                 if VERBOSE_TENSORS_TRACKER:
                     print("Removing unused tensor...")
 

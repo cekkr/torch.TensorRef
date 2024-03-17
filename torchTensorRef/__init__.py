@@ -8,7 +8,7 @@ import types
 import typing
 
 from .hook import Hooks
-from .common import VERBOSE_HOOK
+from .common import VERBOSE_HOOK, properties
 from .basic import Stack
 
 torch = None
@@ -517,6 +517,13 @@ def init():
     tensorRefsTracker.manager = tensorsManager
 
     hook.props = { 'tensor': torch.Tensor, 'tensorRef': TensorRef }
+
+    ### Calculate default parameters
+    tref = torch.rand(1, 1)
+    defRefs = tref.countReferences()
+    print("Tensor default references: ", defRefs)
+    properties['minRefsTensorRef'] = defRefs[0]
+    properties['minRefsTensor'] = defRefs[1]
 
 #if setTensorLikeTo is not None:
 #    setattr(setTensorLikeTo, 'TensorLike', (setTensorLikeTo.TensorLike, hook.TensorRefBase))

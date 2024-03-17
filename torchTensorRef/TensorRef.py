@@ -261,6 +261,9 @@ class TensorRef(ABC, TensorRefBase):
     def stackExit(self):
         self.proxyInfo.stacks -= 1
 
+    def countReferences(self):
+        return tensorRefsTracker.countTensorRefReferences(self)
+
     ### Iterate
 
     # The __iter__ method returns the iterator object itself
