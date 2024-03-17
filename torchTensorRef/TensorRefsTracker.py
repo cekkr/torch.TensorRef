@@ -31,7 +31,7 @@ class TensorRefsTracker:
         self.tensorRefs = {}
         self.tensors = {}
         self.refByTensor = {}
-        self.tensorByRef = {}
+        self.tensorByRef = {} # a checker dict, useless, remove it. damn.
 
     def calculateSizes(self):
         self.numOnCPU = 0
@@ -150,7 +150,7 @@ class TensorRefsTracker:
                         print("Removing unused tensorRef...")
 
                     removes = True
-                    self.uncountTensor(tensorRef)
+                    #self.uncountTensor(tensorRef)
                     self.remTensorRef(tensorRef)
                 else:
                     print("Impossible to remove locked tensorRef")
