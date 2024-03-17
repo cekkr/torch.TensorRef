@@ -138,7 +138,7 @@ class TensorRef(ABC, TensorRefBase):
                 if VERBOSE_HOOK:            
                     print(f"Calling {name}")
 
-                if name is not ['set_', 'numpy', 'detach']:
+                if name not in ['set_', 'numpy', 'detach']:
                     self.toGPU()
                 attr = getattr(self.target, name) # you have to retrieve it again
 
