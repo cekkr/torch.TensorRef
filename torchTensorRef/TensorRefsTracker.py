@@ -73,20 +73,19 @@ class TensorRefsTracker:
         except Exception as err:
             pass
 
-        if idTensor in self.refByTensor:
-            size = tensor.numel() * tensor.element_size() # in bytes
-            if tensor.is_cpu:
-                self.numOnCPU -= 1
-                self.sizeOnCPU -= size
-            else:
-                self.numOnGPU -= 1
-                self.sizeOnGPU -= size
-                tensor.detach()
+        size = tensor.numel() * tensor.element_size() # in bytes
+        if tensor.is_cpu:
+            self.numOnCPU -= 1
+            self.sizeOnCPU -= size
+        else:
+            self.numOnGPU -= 1
+            self.sizeOnGPU -= size
+            tensor.detach()
 
-            try:
-                del self.refByTensor[idTensor]
-            except:
-                pass                
+        try:
+            del self.refByTensor[idTensor]
+        except:
+            pass                
 
     def printStatus(self):
         # Memory limiter
