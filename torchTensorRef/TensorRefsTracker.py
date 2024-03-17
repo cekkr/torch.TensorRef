@@ -82,7 +82,8 @@ class TensorRefsTracker:
         else:
             self.numOnGPU -= 1
             self.sizeOnGPU -= size
-            tensor.detach()
+
+        tensor.detach()
 
         try:
             del self.refByTensor[idTensor]
@@ -132,18 +133,21 @@ class TensorRefsTracker:
         tensorRefs = copy.copy(self.tensorRefs)
         for key, tensorRef in tensorRefs.items():
             countRefs = sys.getrefcount(tensorRef)
-            if countRefs <= properties['minRefsTensorRef'] and not tensorRef.proxyInfo.locked: # self.tensorRefs + tensorRef + getrefcount(tensorRef) + tensorRefs + self.refByTensor
-                if VERBOSE_TENSORS_TRACKER:
-                    print("Removing unused tensorRef...")
+            if countRefs <= properties['minRefsTensorRef']: # self.tensorRefs + tensorRef + getrefcount(tensorRef) + tensorRefs + self.refByTensor
+                if not tensorRef.proxyInfo.locked:
+                    if VERBOSE_TENSORS_TRACKER:
+                        print("Removing unused tensorRef...")
 
-                removes = True
-                self.uncountTensor(tensorRef)
-                self.remTensorRef(tensorRef)
+                    removes = True
+                    self.uncountTensor(tensorRef)
+                    self.remTensorRef(tensorRef)
+                else:
+                    print("Impossible to remove locked tensorRef")
 
         tensors = copy.copy(self.tensors)
         for key, tensor in tensors.items():
             countRefs = sys.getrefcount(tensor)
-            if countRefs <= properties['minRefsTensor']:  # self.tensors + tensor + getrefcount(tensor) + tensors
+            if countRefs < properties['minRefsTensor']:  # self.tensors + tensor + getrefcount(tensor) + tensors
                 if VERBOSE_TENSORS_TRACKER:
                     print("Removing unused tensor...")
 
@@ -153,5 +157,5 @@ class TensorRefsTracker:
         if removes:
             self.gcCollect()
 
-            self.calculateSizes() # calculate size from scratch
+            #self.calculateSizes() # calculate size from scratch
             self.printStatus()

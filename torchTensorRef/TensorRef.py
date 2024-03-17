@@ -218,6 +218,7 @@ class TensorRef(ABC, TensorRefBase):
     def toGPU(self):
         if isinstance(self.target, Tensor):
             if self.target.is_cpu:
+                print('TensorRef.toGPU')
                 dev = self.proxyInfo.tensorsManager.device
                 if dev is not None and dev != "cpu":
                     dt = self.target.dtype
@@ -243,6 +244,7 @@ class TensorRef(ABC, TensorRefBase):
     def toCPU(self):
         if isinstance(self.target, Tensor):
             if not self.target.is_cpu:
+                print('TensorRef.toCPU')
                 tensorRefsTracker.uncountTensor(self)
                 self.target = self.target.to(device="cpu")                
                 #self.target = self.target.to(torch.get_default_dtype()) # ensure Tensor default type
