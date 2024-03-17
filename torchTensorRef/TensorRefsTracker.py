@@ -75,7 +75,10 @@ class TensorRefsTracker:
         tensor = tensorRef
         if isinstance(tensorRef, TensorRef):
             tensor = tensorRef.target
-            del self.tensorByRef[id(tensorRef)]
+            try:
+                del self.tensorByRef[id(tensorRef)]
+            except:
+                pass
 
         idTensor = id(tensor)
 
@@ -99,7 +102,11 @@ class TensorRefsTracker:
             #del self.tensorByRef[id(ref)]
             del self.refByTensor[idTensor]
         except:
-            pass                
+            pass
+
+        # debug purposes
+        count = sys.getrefcount(tensor)
+        print(count)
 
     def printStatus(self):
         # Memory limiter
@@ -110,7 +117,8 @@ class TensorRefsTracker:
                 for ref in orderedRefs:
                     if ref.proxyInfo.usageNs < avgNs:
                         if not ref.proxyInfo.locked:
-                            ref.toCPU()
+                            ref.toCPU() #todo: mark as to move
+                            pass
                     else:
                         break
             self.gcCollect()
@@ -161,7 +169,7 @@ class TensorRefsTracker:
         tensors = copy.copy(self.tensors)
         for key, tensor in tensors.items():
             countRefs = sys.getrefcount(tensor)
-            if countRefs <= properties['minRefsTensor']+1:  # self.tensors + tensor + getrefcount(tensor) + tensors
+            if countRefs <= properties['minRefsTensor']:  # self.tensors + tensor + getrefcount(tensor) + tensors
                 if VERBOSE_TENSORS_TRACKER:
                     print("Removing unused tensor...")
 

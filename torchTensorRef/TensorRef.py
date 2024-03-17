@@ -227,6 +227,7 @@ class TensorRef(ABC, TensorRefBase):
                 if VERBOSE_HOOK:            
                     print(f"Returning {name}")
 
+                tensorRefsTracker.printStatus()
                 tensorRefsTracker.checkTensors()
 
                 return result
@@ -261,7 +262,6 @@ class TensorRef(ABC, TensorRefBase):
                     self.target = res
 
                     tensorRefsTracker.countTensor(self)
-                    tensorRefsTracker.printStatus()
                     return res
             else:
                 pass
@@ -274,10 +274,13 @@ class TensorRef(ABC, TensorRefBase):
                 if VERBOSE_HOOK:
                     print('TensorRef.toCPU')
                 tensorRefsTracker.uncountTensor(self)
-                self.target = self.target.to(device="cpu")                
-                #self.target = self.target.to(torch.get_default_dtype()) # ensure Tensor default type
+                res = self.target.to(device="cpu")
+                #res = res.to(torch.get_default_dtype()) # ensure Tensor default type
+
+                if isinstance(self.target, torch.nn.Parameter) and not isinstance(res, torch.nn.Parameter):
+                    res = torch.nn.Parameter(res)
+
                 tensorRefsTracker.countTensor(self)
-                tensorRefsTracker.printStatus()
             else:
                 pass
 
