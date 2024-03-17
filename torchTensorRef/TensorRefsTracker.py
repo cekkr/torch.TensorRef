@@ -139,6 +139,7 @@ class TensorRefsTracker:
             pass
 
     def gcCollect(self):
+        return
         gc.collect()
         clearCuda()
 
@@ -160,7 +161,7 @@ class TensorRefsTracker:
                         print("Removing unused tensorRef...")
 
                     removes = True
-                    self.uncountTensor(tensorRef, False)
+                    self.uncountTensor(tensorRef, True)
                     self.remTensorRef(tensorRef)
                     tensorRef.target = None
                 else:

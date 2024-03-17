@@ -105,68 +105,80 @@ def method_wrapper(func):
             if name.startswith('torch._refs') or name == 'torch.group_norm':
                 methodStack.set('inOp', True)
 
+            refs = []
+            embeddings = []
+            def argToRef(arg):
+                if TensorRef is not None:
+                    if isinstance(arg, TorchTensor):
+                        args = retrieveTensorRef(arg, tensorsManager)
+                    if isinstance(arg, TensorRef):
+                        refs.append(arg)
+                        arg.toGPU()
+                    if isinstance(arg, torch.nn.Module):
+                        props = dir(arg)
+                        embeddings.append(embeddings)
+                        for p in props:
+                            tensor = getattr(arg, p)
+                            if isinstance(tensor, TorchTensor):
+                                ref = retrieveTensorRef(tensor, tensorsManager)
+                                ref.toGPU()
+                                setattr(arg, p, ref)
+                return arg
+
+            args = list(args)
+            for a in range(0, len(args)):
+                arg = args[a]
+                checkSelf(arg)
+                args[a] = argToRef(args[a])
+            args = tuple(args)
+
+            for key, value in kwargs.items():
+                kwargs[key] = argToRef(value)
+
             result = None
 
-            if not classWrapper.wrapArguments:
+            if classWrapper.argsAsRef:
                 try:
                     result = func(*args, **kwargs)
                 except:
-                    classWrapper.wrapArguments = True
+                    classWrapper.argsAsRef = False
 
-            if classWrapper.wrapArguments:
+            if not classWrapper.argsAsRef:
+                def argToTensor(arg):
+                    if isinstance(arg, TensorRef):
+                        arg = arg.target
+                    return arg
+
                 args = list(args)
-
-                refs = []
-                embeddings = []
                 for a in range(0, len(args)):
-                    arg = args[a]
-                    checkSelf(arg)
-                    if TensorRef is not None:
-                        if isinstance(arg, TorchTensor):
-                            args[a] = retrieveTensorRef(arg, tensorsManager)
-                        if isinstance(args[a], TensorRef):
-                            refs.append(args[a])
-                            res = args[a].toGPU()
-                            if not passTensorRefs:
-                                args[a] = res
-                        if isinstance(arg, torch.nn.Module):
-                            props = dir(arg)
-                            for p in props:
-                                tensor = getattr(arg, p)
-                                if isinstance(tensor, TorchTensor):
-                                    ref = retrieveTensorRef(tensor, tensorsManager)
-                                    setattr(arg, p, ref.toGPU())
-                        '''
-                        else:
-                            # https://github.com/huggingface/accelerate/blob/main/src/accelerate/big_modeling.py
-                            if isinstance(args[a], TensorRef):
-                                args[a] = None
-                        '''
+                    args[a] = argToTensor(args[a])
                 args = tuple(args)
+
+                for key, value in kwargs.items():
+                    kwargs[key] = argToTensor(value)
+
+                result = func(*args, **kwargs)
 
                 for ref in refs:
                     ref.onUsage()
                     ref.stackEnter()
 
-                #if name == 'torch.group_norm':
-                #    print("debug")
 
-                # print(f"Before calling {func.__name__}")
-                result = func(*args, **kwargs)
-                # print(f"After calling {func.__name__}")
+            for r in refs:
+                r.toCPU()
+                #r.uncount()
+                r.stackExit()
 
-                for r in refs:
-                    r.toCPU()
-                    #r.uncount()
-                    r.stackExit()
-
-                for e in embeddings: # never used
-                    props = dir(e)
-                    for p in props:
-                        tensor = getattr(arg, p)
-                        if isinstance(tensor, TorchTensor):
-                            ref = retrieveTensorRef(tensor, tensorsManager)
-                            setattr(e, p, ref.toCPU())
+            for e in embeddings:
+                props = dir(e)
+                for p in props:
+                    tensor = getattr(e, p)
+                    if isinstance(tensor, TorchTensor):
+                        ref = retrieveTensorRef(tensor, tensorsManager)
+                        tens = ref.toCPU()
+                        if _returnNormalTensor:
+                            ref = tens
+                        setattr(e, p, ref)
 
             methodStack = methodStack.exit()
 
@@ -180,7 +192,7 @@ def method_wrapper(func):
 
             return result
 
-    classWrapper.wrapArguments = False
+    classWrapper.argsAsRef = passAsRef
     wrapper = classWrapper.funWrapper
 
     try:
