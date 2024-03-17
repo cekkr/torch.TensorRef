@@ -110,7 +110,7 @@ class TensorRefsTracker:
 
     def printStatus(self):
         # Memory limiter
-        if self.sizeOnGPU > ((1024 ** 3)*1):
+        if self.sizeOnGPU > ((1024 ** 3)*4): #todo: move fixed size to dynamic size
             orderedRefs = sorted(self.tensorRefs.values(), key=lambda x: x.proxyInfo.usageNs)
             if len(orderedRefs) > 0:
                 avgNs = sum(x.proxyInfo.usageNs for x in orderedRefs) / len(orderedRefs)
