@@ -513,6 +513,8 @@ def init():
     flushWrap()
 
     from .TensorRef import TensorRef, tensorRefsTracker, retrieveTensorRef
+    tensorsManager.refsTracker = tensorRefsTracker
+    tensorRefsTracker.manager = tensorsManager
 
     hook.props = { 'tensor': torch.Tensor, 'tensorRef': TensorRef }
 
