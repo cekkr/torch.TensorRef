@@ -135,6 +135,9 @@ class TensorRef(ABC, TensorRefBase):
                 return stillMe
 
         if callable(attr):
+            if name in ['shape']:
+                return attr
+
             # If the original attribute is callable, we return a new wrapper function
             def wrapper(*args, **kwargs):
                 # Here you can analyze the arguments before calling the original function
@@ -143,6 +146,8 @@ class TensorRef(ABC, TensorRefBase):
 
                 if name not in ['set_', 'numpy', 'detach']:
                     self.toGPU()
+                    self.proxyInfo.locked = True
+
                 attr = getattr(self.target, name) # you have to retrieve it again
 
                 # look for tensors on CPU
@@ -155,6 +160,7 @@ class TensorRef(ABC, TensorRefBase):
                     if isinstance(value, TensorRef):
                         proxies.append(value)
                         args[a] = value.toGPU()
+                        value.proxyInfo.locked = True
 
                     if name == '__torch_function__':
                         if args[a] is tuple:
@@ -173,14 +179,27 @@ class TensorRef(ABC, TensorRefBase):
                         proxies.append(value)
                         kwargs[key] = value.toGPU()
 
+                '''
+                isCpu = self.target.is_cpu
+                for arg in args:
+                    if isinstance(arg, (Tensor, TensorRef)):
+                        tensor = arg
+                        if isinstance(arg, TensorRef):
+                            tensor = tensor.target
+                        if tensor.is_cpu != isCpu:
+                            print("debug")
+                '''
+
                 # Perform the call to the original function
                 result = attr(*args, **kwargs)
                 # Optionally, process the result before returning
 
                 # back to CPU
                 for value in proxies:
+                    value.proxyInfo.locked = False
                     value.toCPU()
 
+                self.proxyInfo.locked = False
                 self.toCPU()
 
                 def toRef(result):
@@ -221,7 +240,8 @@ class TensorRef(ABC, TensorRefBase):
     def toGPU(self):
         if isinstance(self.target, Tensor):
             if self.target.is_cpu:
-                print('TensorRef.toGPU')
+                if VERBOSE_HOOK:
+                    print('TensorRef.toGPU')
                 dev = self.proxyInfo.tensorsManager.device
                 if dev is not None and dev != "cpu":
                     dt = self.target.dtype
@@ -241,6 +261,7 @@ class TensorRef(ABC, TensorRefBase):
 
                     tensorRefsTracker.countTensor(self)
                     tensorRefsTracker.printStatus()
+                    return res
             else:
                 pass
 
@@ -249,7 +270,8 @@ class TensorRef(ABC, TensorRefBase):
     def toCPU(self):
         if isinstance(self.target, Tensor):
             if not self.target.is_cpu:
-                print('TensorRef.toCPU')
+                if VERBOSE_HOOK:
+                    print('TensorRef.toCPU')
                 tensorRefsTracker.uncountTensor(self)
                 self.target = self.target.to(device="cpu")                
                 #self.target = self.target.to(torch.get_default_dtype()) # ensure Tensor default type

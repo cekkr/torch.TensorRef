@@ -51,7 +51,7 @@ exclude = [
             'torchTensorRef',
             #'torch._tensor', 'torch._C', 'torch._utils'
             'torch._',
-            'torch.is_grad_enabled'
+            'torch.is_grad_enabled', 'torch.get_default_dtype', 'torch.cat', 'torch.stack', 'torch.isfinite'
            ]
 
 def startsWith(str, arr):

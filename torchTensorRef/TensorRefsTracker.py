@@ -92,8 +92,7 @@ class TensorRefsTracker:
             else:
                 self.numOnGPU -= 1
                 self.sizeOnGPU -= size
-
-        tensor.detach()
+                #tensor.detach()
 
         try:
             #ref = self.refByTensor[idTensor]
@@ -146,7 +145,7 @@ class TensorRefsTracker:
         tensorRefs = copy.copy(self.tensorRefs)
         for key, tensorRef in tensorRefs.items():
             countRefs = sys.getrefcount(tensorRef)
-            if countRefs <= properties['minRefsTensorRef'] + 1: # self.tensorRefs + tensorRef + getrefcount(tensorRef) + tensorRefs + self.refByTensor
+            if countRefs <= properties['minRefsTensorRef']: # self.tensorRefs + tensorRef + getrefcount(tensorRef) + tensorRefs + self.refByTensor
                 if not tensorRef.proxyInfo.locked:
                     if VERBOSE_TENSORS_TRACKER:
                         print("Removing unused tensorRef...")
