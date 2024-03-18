@@ -165,8 +165,9 @@ def method_wrapper(func):
                 try:
                     result = func(*args, **kwargs)
 
-                    if not classWrapper.nanChecked and torch.isnan(result).any():
-                        argsAsRef = classWrapper.argsAsRef = False
+                    if not classWrapper.nanChecked
+                        if torch.isnan(result).any():
+                            argsAsRef = classWrapper.argsAsRef = False
                         classWrapper.nanChecked = True
 
                 except Exception as err:
