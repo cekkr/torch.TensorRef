@@ -114,9 +114,11 @@ def method_wrapper(func):
 
             inMaxLevel = methodStack.level > maxStackLevel
 
-            if len(name.split('.')) == 2: # basic function
+            if len(name.split('.')) == 2 or name.startswith('torch.nn.functional.'): # basic function
                 tensorsBackToCPU = True
                 inMaxLevel = True
+            else:
+                pass # for debugging
 
             argsAsRef = classWrapper.argsAsRef
             changeDevice = True
