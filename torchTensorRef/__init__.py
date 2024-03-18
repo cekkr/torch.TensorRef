@@ -74,10 +74,13 @@ def endsWith(str, arr):
 methodStack = Stack()
 
 itsMe = []
+origFunctions = {}
 def method_wrapper(func):
     name = func.__module__+'.'+func.__name__
     if func in itsMe or startsWith(name, exclude) or not startsWith(name, injectTo):
         return func
+
+    origFunctions[name] = func
 
     passAsRef = name not in ['torch.nn.modules.module._load_from_state_dict', 'torch.serialization._load']
     ignoreNaNChecker = name in ['torch.nn.modules.module.load_state_dict', 'torch.tensor']
@@ -170,11 +173,11 @@ def method_wrapper(func):
 
                     if not classWrapper.nanChecked:
                         try:
-                            if torch.isnan(result).any():
+                            if origFunctions['torch.isnan'](result).any():
                                 argsAsRef = classWrapper.argsAsRef = False
-                            classWrapper.nanChecked = True
                         except:
                             pass
+                        classWrapper.nanChecked = True
 
                 except Exception as err:
                     argsAsRef = classWrapper.argsAsRef = False
