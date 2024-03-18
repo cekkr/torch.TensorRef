@@ -48,15 +48,16 @@ def checkSelf(self):
 injectTo = ['torch']
 exclude = [
             'torch.fx', 'torch.jit', 'torch.autograd', 'torchgen', 'torch.storage', 'functools', 'torch.utils', 'torch.library', 'torch.cuda',
+            "torch.collections", "torch.tensor",
             'torchTensorRef',
             #'torch._tensor', 'torch._C', 'torch._utils'
-            #'torch._',
+            'torch._',
             'torch.is_grad_enabled', 'torch.get_default_dtype', 'torch.no_grad',
             'torch.load', 'torch.serialization'
 ]
 
 functionsAsIs = [
-    'torch.is_grad_enabled', 'torch.get_default_dtype', 'torch.cat', 'torch.stack', 'torch.isfinite', 'torch.isnan', 'torch.ceil'
+    'torch.is_grad_enabled', 'torch.get_default_dtype', # 'torch.cat', 'torch.stack', 'torch.isfinite', 'torch.isnan', 'torch.ceil'
 ]
 
 def startsWith(str, arr):
@@ -159,7 +160,7 @@ def method_wrapper(func):
             embeddings = []
             def argToRef(arg):
                 if TensorRef is not None:
-                    if not tensorsBackToCPU and isinstance(arg, TorchTensor):
+                    if isinstance(arg, TorchTensor): #not tensorsBackToCPU and
                         arg = retrieveTensorRef(arg, tensorsManager, tensorsBackToCPU)
                         newRefs.append(arg)
                     if isinstance(arg, TensorRef):
