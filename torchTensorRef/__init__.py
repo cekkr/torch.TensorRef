@@ -50,7 +50,7 @@ exclude = [
             'torch.fx', 'torch.jit', 'torch.autograd', 'torchgen', 'torch.storage', 'functools', 'torch.utils', 'torch.library', 'torch.cuda',
             'torchTensorRef',
             #'torch._tensor', 'torch._C', 'torch._utils'
-            'torch._',
+            #'torch._',
             'torch.is_grad_enabled', 'torch.get_default_dtype', 'torch.no_grad'
 ]
 
@@ -107,12 +107,12 @@ def method_wrapper(func):
                 print('Fun Hook: ', name + ' \t', methodStack.level)
 
             maxStackLevel = 5
-            tensorsBackToCPU = methodStack.level <= maxStackLevel
+            tensorsBackToCPU = True # methodStack.level <= maxStackLevel
 
             methodStack = methodStack.enter(name)
             #stackFullName = methodStack.getFullName() #TODO: methodStack.getFullName() creates an infinity loop, check it
 
-            inMaxLevel = methodStack.level > maxStackLevel
+            inMaxLevel = False # methodStack.level > maxStackLevel
 
             if len(name.split('.')) == 2 or name.startswith('torch.nn.functional.'): # basic function
                 tensorsBackToCPU = True
@@ -150,9 +150,9 @@ def method_wrapper(func):
             refs = []
             newRefs = []
             embeddings = []
-            def argToRef(arg):
+            def argToRef(arg, asIs = False):
                 if TensorRef is not None:
-                    if isinstance(arg, TorchTensor):
+                    if isinstance(arg, TorchTensor) and not asIs:
                         arg = retrieveTensorRef(arg, tensorsManager, tensorsBackToCPU)
                         newRefs.append(arg)
                     if isinstance(arg, TensorRef):
@@ -169,6 +169,12 @@ def method_wrapper(func):
                                 if refAsGPU and changeDevice:
                                     ref.toGPU()
                                 setattr(arg, p, ref)
+                if isinstance(arg, list):
+                    for a in range(0, len(arg)):
+                        arg[a] = argToRef(arg[0], True)
+                if isinstance(arg, dict):
+                    for k,v in arg.items():
+                        arg[k] = argToRef(v, True)
                 return arg
 
             args = list(args)
@@ -205,6 +211,9 @@ def method_wrapper(func):
                             arg = arg.target
                         else:
                             arg = arg.toGPU()
+                    if isinstance(arg, list):
+                        for a in range(0, len(arg)):
+                            arg[a] = argToTensor(arg[0])
                     return arg
 
                 args = list(args)
