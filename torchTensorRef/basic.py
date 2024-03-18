@@ -6,6 +6,11 @@ class Stack:
         self.keys = {}
         self.subs = {}
 
+        if parent is None:
+            self.level = 0
+        else:
+            self.level = parent.level + 1
+
         self.name = name
         
     def enter(self, name):
