@@ -94,7 +94,7 @@ def method_wrapper(func):
     passTensorRefs = passTensorRefs or name.startswith('torch._refs')
     passTensorRefs = passTensorRefs or name.startswith('torch._prims')
     '''
-    returnNormalTensor = name.endswith('_maybe_convert_to_dtype') 
+    returnNormalTensor = name.endswith('_maybe_convert_to_dtype')
 
     #print(name)
     #func_signature = inspect.signature(func)
@@ -153,7 +153,7 @@ def method_wrapper(func):
             # If at lower level, force passing as Tensor
             if inMaxLevel:
                 argsAsRef = False
-                _returnNormalTensor = not tensorsBackToCPU
+                _returnNormalTensor = _returnNormalTensor or not tensorsBackToCPU
 
             refs = []
             newRefs = []
@@ -286,6 +286,8 @@ def method_wrapper(func):
                 ref = retrieveTensorRef(result, tensorsManager, tensorsBackToCPU)
                 if tensorsBackToCPU:
                     ref.toCPU()
+                if _returnNormalTensor:
+                    return ref.target
                 return ref
 
             return result
