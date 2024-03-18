@@ -105,7 +105,7 @@ def method_wrapper(func):
                 print('Fun Hook: ', name)                
 
             methodStack = methodStack.enter(name)
-            stackFullName = methodStack.getFullName()
+            #stackFullName = methodStack.getFullName() #TODO: methodStack.getFullName() creates an infinity loop, check it
 
             argsAsRef = classWrapper.argsAsRef
             changeDevice = True
@@ -116,8 +116,7 @@ def method_wrapper(func):
                 simpleFunction = True
 
             if VERBOSE_HOOK:
-                #TODO: methodStack.getFullName() creates an infinity loop
-                #print("Stack: " + methodStack.getFullName())
+                #print("Stack: " + stackFullName)
                 pass
 
             _returnNormalTensor = returnNormalTensor
@@ -230,7 +229,7 @@ def method_wrapper(func):
             return result
 
     classWrapper.argsAsRef = passAsRef
-    classWrapper.nanChecked = name in ['torch.serialization._load'] #or True
+    classWrapper.nanChecked = name in ['torch.serialization._load', 'torch.isnan'] #or True
     wrapper = classWrapper.funWrapper
 
     try:
