@@ -95,9 +95,7 @@ def method_wrapper(func):
     returnNormalTensor = name.endswith('_maybe_convert_to_dtype')
 
     #print(name)
-
     #func_signature = inspect.signature(func)
-
     wrapArguments = False
 
     class classWrapper:
@@ -108,13 +106,17 @@ def method_wrapper(func):
             if VERBOSE_HOOK:
                 print('Fun Hook: ', name + ' \t', methodStack.level)
 
-            maxStackLevel = 3
+            maxStackLevel = 5
             tensorsBackToCPU = methodStack.level <= maxStackLevel
 
             methodStack = methodStack.enter(name)
             #stackFullName = methodStack.getFullName() #TODO: methodStack.getFullName() creates an infinity loop, check it
 
             inMaxLevel = methodStack.level > maxStackLevel
+
+            if len(name.split('.')) == 2: # basic function
+                tensorsBackToCPU = True
+                inMaxLevel = True
 
             argsAsRef = classWrapper.argsAsRef
             changeDevice = True

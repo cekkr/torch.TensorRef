@@ -1,4 +1,5 @@
 # Put in basic everything doesn't involve torch
+import copy
 
 class Stack:
     def __init__(self, name='', parent=None):
@@ -10,6 +11,7 @@ class Stack:
             self.level = 0
         else:
             self.level = parent.level + 1
+            self.keys = copy.copy(parent.keys)
 
         self.name = name
         
@@ -28,8 +30,8 @@ class Stack:
         self.keys[key] = val
 
     def get(self, key, rec = 0):
-        if rec > 10:
-            return None
+        #if rec > 10:
+        #    return None
 
         if key not in self.keys:
             if self.parent != None:
