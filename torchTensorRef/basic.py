@@ -34,5 +34,5 @@ class Stack:
         if self.parent is not None:
             fname = self.parent.getFullName()
             if len(fname) > 0:
-                name = self.parent.getFullName() + '.' + name 
+                name = self.parent.getFullName() + '>>' + name
         return name
