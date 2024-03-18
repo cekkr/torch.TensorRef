@@ -106,10 +106,15 @@ def method_wrapper(func):
             global methodStack
 
             if VERBOSE_HOOK:
-                print('Fun Hook: ', name)                
+                print('Fun Hook: ', name)
+
+            maxStackLevel = 5
+            tensorsBackToCPU = methodStack.level <= maxStackLevel
 
             methodStack = methodStack.enter(name)
             #stackFullName = methodStack.getFullName() #TODO: methodStack.getFullName() creates an infinity loop, check it
+
+            inMaxLevel = methodStack.level > maxStackLevel
 
             argsAsRef = classWrapper.argsAsRef
             changeDevice = True
@@ -132,6 +137,11 @@ def method_wrapper(func):
                 methodStack.set('inOp', True)
 
             refAsGPU = True # set it as false make the algorithm stop working
+
+            # If at lower level, force passing as Tensor
+            if inMaxLevel:
+                argsAsRef = False
+                _returnNormalTensor = True
 
             refs = []
             embeddings = []
@@ -220,7 +230,8 @@ def method_wrapper(func):
 
 
             for r in refs:
-                r.toCPU()
+                if tensorsBackToCPU:
+                    r.toCPU()
                 #r.uncount()
                 r.stackExit()
 
@@ -230,7 +241,9 @@ def method_wrapper(func):
                     tensor = getattr(e, p)
                     if isinstance(tensor, TorchTensor):
                         ref = retrieveTensorRef(tensor, tensorsManager)
-                        tens = ref.toCPU()
+                        tens = ref.target
+                        if tensorsBackToCPU:
+                            tens = ref.toCPU()
                         if _returnNormalTensor:
                             ref = tens
                         setattr(e, p, ref)
@@ -240,7 +253,8 @@ def method_wrapper(func):
             if not _returnNormalTensor and TorchTensor is not None:
                 if isinstance(result, TorchTensor):
                     ref = retrieveTensorRef(result, tensorsManager)
-                    ref.toCPU()
+                    if tensorsBackToCPU:
+                        ref.toCPU()
                     return ref
 
             if changeDevice:
