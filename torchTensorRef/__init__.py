@@ -159,7 +159,7 @@ def method_wrapper(func):
             embeddings = []
             def argToRef(arg):
                 if TensorRef is not None:
-                    if isinstance(arg, TorchTensor):
+                    if not tensorsBackToCPU and isinstance(arg, TorchTensor):
                         arg = retrieveTensorRef(arg, tensorsManager, tensorsBackToCPU)
                         newRefs.append(arg)
                     if isinstance(arg, TensorRef):
@@ -175,7 +175,7 @@ def method_wrapper(func):
                                 ref = retrieveTensorRef(tensor, tensorsManager, tensorsBackToCPU)
                                 if refAsGPU and changeDevice:
                                     ref.toGPU()
-                                setattr(arg, p, ref)
+                                setattr(arg, p, ref.target)
                 if isinstance(arg, list):
                     for a in range(0, len(arg)):
                         arg[a] = argToRef(arg[0])
