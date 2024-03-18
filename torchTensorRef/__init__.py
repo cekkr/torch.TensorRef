@@ -150,9 +150,9 @@ def method_wrapper(func):
             refs = []
             newRefs = []
             embeddings = []
-            def argToRef(arg, asIs = False):
+            def argToRef(arg):
                 if TensorRef is not None:
-                    if isinstance(arg, TorchTensor) and not asIs:
+                    if isinstance(arg, TorchTensor):
                         arg = retrieveTensorRef(arg, tensorsManager, tensorsBackToCPU)
                         newRefs.append(arg)
                     if isinstance(arg, TensorRef):
@@ -171,10 +171,10 @@ def method_wrapper(func):
                                 setattr(arg, p, ref)
                 if isinstance(arg, list):
                     for a in range(0, len(arg)):
-                        arg[a] = argToRef(arg[0], True)
+                        arg[a] = argToRef(arg[0])
                 if isinstance(arg, dict):
                     for k,v in arg.items():
-                        arg[k] = argToRef(v, True)
+                        arg[k] = argToRef(v)
                 return arg
 
             args = list(args)
@@ -214,6 +214,9 @@ def method_wrapper(func):
                     if isinstance(arg, list):
                         for a in range(0, len(arg)):
                             arg[a] = argToTensor(arg[0])
+                    if isinstance(arg, dict):
+                        for k, v in arg.items():
+                            arg[k] = argToTensor(v)
                     return arg
 
                 args = list(args)
