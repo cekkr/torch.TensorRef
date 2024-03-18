@@ -114,7 +114,7 @@ def method_wrapper(func):
             argsAsRef = classWrapper.argsAsRef
             changeDevice = True
             simpleFunction = False
-            if startsWith(name, functionsAsIs) or  endsWith(name, functionsAsIs):
+            if name in functionsAsIs:
                 argsAsRef = False
                 changeDevice = False
                 simpleFunction = True
