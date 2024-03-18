@@ -55,7 +55,7 @@ exclude = [
 ]
 
 functionsAsIs = [
-    'torch.is_grad_enabled', 'torch.get_default_dtype', 'torch.cat', 'torch.stack', 'torch.isfinite', 'torch.isnan', '.embedding'
+    'torch.is_grad_enabled', 'torch.get_default_dtype', 'torch.cat', 'torch.stack', 'torch.isfinite', 'torch.isnan'
 ]
 
 def startsWith(str, arr):
@@ -79,7 +79,8 @@ def method_wrapper(func):
     if func in itsMe or startsWith(name, exclude) or not startsWith(name, injectTo):
         return func
 
-    passAsRef = True
+    passAsRef = name not in ['torch.nn.modules.module._load_from_state_dict', 'torch.serialization._load']
+    ignoreNaNChecker = name in ['torch.nn.modules.module.load_state_dict']
     #if name.startswith('torch.nn.modules'):
     #    passAsRef = True
 
@@ -141,7 +142,7 @@ def method_wrapper(func):
                             arg.toGPU()
                     if isinstance(arg, torch.nn.Module):
                         props = dir(arg)
-                        embeddings.append(embeddings)
+                        embeddings.append(arg)
                         for p in props:
                             tensor = getattr(arg, p)
                             if isinstance(tensor, TorchTensor):
@@ -168,9 +169,12 @@ def method_wrapper(func):
                     result = func(*args, **kwargs)
 
                     if not classWrapper.nanChecked:
-                        if torch.isnan(result).any():
-                            argsAsRef = classWrapper.argsAsRef = False
-                        classWrapper.nanChecked = True
+                        try:
+                            if torch.isnan(result).any():
+                                argsAsRef = classWrapper.argsAsRef = False
+                            classWrapper.nanChecked = True
+                        except:
+                            pass
 
                 except Exception as err:
                     argsAsRef = classWrapper.argsAsRef = False
@@ -191,6 +195,19 @@ def method_wrapper(func):
 
                 for key, value in kwargs.items():
                     kwargs[key] = argToTensor(value)
+
+                for emb in embeddings:
+                    props = dir(emb)
+                    for p in props:
+                        tensor = getattr(emb, p)
+                        if isinstance(tensor, TensorRef):
+                            ref = retrieveTensorRef(tensor, tensorsManager)
+                            tens = None
+                            if refAsGPU:
+                                tens = ref.target
+                            elif changeDevice:
+                                tens = ref.toGPU()
+                            setattr(emb, p, tens)
 
                 result = func(*args, **kwargs)
 
@@ -229,7 +246,7 @@ def method_wrapper(func):
             return result
 
     classWrapper.argsAsRef = passAsRef
-    classWrapper.nanChecked = name in ['torch.serialization._load', 'torch.isnan'] #or True
+    classWrapper.nanChecked = name in ['torch.isnan'] or ignoreNaNChecker
     wrapper = classWrapper.funWrapper
 
     try:

@@ -423,6 +423,9 @@ def createMagicWrapper(m):
 
     if magicRef is None:
         def makeWrapper(m, magic):
+            if m in ['__bool__']:
+                return magic
+
             def magicWrapper(*args, **kwargs):
 
                 if VERBOSE_HOOK:

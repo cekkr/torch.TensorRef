@@ -4,15 +4,16 @@ class Stack:
     def __init__(self, name='', parent=None):
         self.parent = parent
         self.keys = {}
+        self.subs = {}
 
         self.name = name
         
     def enter(self, name):
-        if name in self.keys:
-            return self.keys[name]
+        if name in self.subs:
+            return self.subs[name]
         else:
             sub = Stack(name, self)
-            self.keys[name] = sub
+            self.subs[name] = sub
             return sub 
     
     def exit(self):
