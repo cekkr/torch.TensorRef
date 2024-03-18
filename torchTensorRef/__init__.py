@@ -51,10 +51,11 @@ exclude = [
             'torchTensorRef',
             #'torch._tensor', 'torch._C', 'torch._utils'
             'torch._',
+            'torch.is_grad_enabled', 'torch.get_default_dtype'
 ]
 
 functionsAsIs = [
-    'torch.is_grad_enabled', 'torch.get_default_dtype', 'torch.cat', 'torch.stack', 'torch.isfinite', 'torch.isnan',
+    'torch.is_grad_enabled', 'torch.get_default_dtype', 'torch.cat', 'torch.stack', 'torch.isfinite', 'torch.isnan', '.embedding'
 ]
 
 def startsWith(str, arr):
@@ -115,7 +116,9 @@ def method_wrapper(func):
                 simpleFunction = True
 
             if VERBOSE_HOOK:
-                print("Stack: " + methodStack.getFullName())
+                #TODO: methodStack.getFullName() creates an infinity loop
+                #print("Stack: " + methodStack.getFullName())
+                pass
 
             _returnNormalTensor = returnNormalTensor
 
@@ -227,7 +230,7 @@ def method_wrapper(func):
             return result
 
     classWrapper.argsAsRef = passAsRef
-    classWrapper.nanChecked = False
+    classWrapper.nanChecked = name in ['torch.serialization._load'] #or True
     wrapper = classWrapper.funWrapper
 
     try:
