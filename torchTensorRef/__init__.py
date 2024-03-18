@@ -131,7 +131,7 @@ def method_wrapper(func):
             if name.startswith('torch._refs') or name == 'torch.group_norm':
                 methodStack.set('inOp', True)
 
-            refAsGPU = False
+            refAsGPU = True # set it as false make the algorithm stop working
 
             refs = []
             embeddings = []
@@ -185,9 +185,9 @@ def method_wrapper(func):
             if not argsAsRef:
                 def argToTensor(arg):
                     if isinstance(arg, TensorRef):
-                        if refAsGPU:
+                        if refAsGPU or not changeDevice:
                             arg = arg.target
-                        elif changeDevice:
+                        else:
                             arg = arg.toGPU()
                     return arg
 
