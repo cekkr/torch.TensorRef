@@ -22,10 +22,13 @@ class Stack:
     def set(self, key, val):
         self.keys[key] = val
 
-    def get(self, key):
+    def get(self, key, rec = 0):
+        if rec > 10:
+            return None
+
         if key not in self.keys:
             if self.parent != None:
-                return self.parent.get(key)
+                return self.parent.get(key, rec+1)
             else:
                 return None 
         return self.keys[key]

@@ -80,7 +80,7 @@ def method_wrapper(func):
         return func
 
     passAsRef = name not in ['torch.nn.modules.module._load_from_state_dict', 'torch.serialization._load']
-    ignoreNaNChecker = name in ['torch.nn.modules.module.load_state_dict']
+    ignoreNaNChecker = name in ['torch.nn.modules.module.load_state_dict', 'torch.tensor']
     #if name.startswith('torch.nn.modules'):
     #    passAsRef = True
 
