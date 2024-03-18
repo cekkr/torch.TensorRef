@@ -139,7 +139,7 @@ class TensorRefsTracker:
             pass
 
     def gcCollect(self):
-        #return
+        return
         gc.collect()
         clearCuda()
 

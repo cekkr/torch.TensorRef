@@ -10,10 +10,11 @@ from .TensorRefsTracker import TensorRefsTracker, SetTensorRefType
 
 tensorRefsTracker = TensorRefsTracker()
 
-def retrieveTensorRef(tensor, tensorsManager=None):
-    idTensor = id(tensor)
-    if idTensor in tensorRefsTracker.refByTensor:
-        return tensorRefsTracker.refByTensor[idTensor]
+def retrieveTensorRef(tensor, tensorsManager=None, checkExistingRef=True):
+    if checkExistingRef:
+        idTensor = id(tensor)
+        if idTensor in tensorRefsTracker.refByTensor:
+            return tensorRefsTracker.refByTensor[idTensor]
 
     if tensorsManager is not None:
         return TensorRef(tensor, tensorsManager)
@@ -87,11 +88,9 @@ class TensorRef(ABC, TensorRefBase):
         tensorRefsTracker.countTensor(self)        
         self.onUsage()
 
-    '''
-    def __del__(self):
-        tensorRefsTracker.uncountTensor(self, False)
+    def release(self):
+        tensorRefsTracker.uncountTensor(self, True)
         tensorRefsTracker.remTensorRef(self)
-    '''
     
     def __setattr__(self, key, value):
         if key == "proxyInfo" or key == "target":

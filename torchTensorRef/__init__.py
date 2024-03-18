@@ -106,9 +106,9 @@ def method_wrapper(func):
             global methodStack
 
             if VERBOSE_HOOK:
-                print('Fun Hook: ', name)
+                print('Fun Hook: ', name + ' \t', methodStack.level)
 
-            maxStackLevel = 5
+            maxStackLevel = 3
             tensorsBackToCPU = methodStack.level <= maxStackLevel
 
             methodStack = methodStack.enter(name)
@@ -144,11 +144,13 @@ def method_wrapper(func):
                 _returnNormalTensor = True
 
             refs = []
+            newRefs = []
             embeddings = []
             def argToRef(arg):
                 if TensorRef is not None:
                     if isinstance(arg, TorchTensor):
-                        arg = retrieveTensorRef(arg, tensorsManager)
+                        arg = retrieveTensorRef(arg, tensorsManager, tensorsBackToCPU)
+                        newRefs.append(arg)
                     if isinstance(arg, TensorRef):
                         refs.append(arg)
                         if refAsGPU and changeDevice:
@@ -159,7 +161,7 @@ def method_wrapper(func):
                         for p in props:
                             tensor = getattr(arg, p)
                             if isinstance(tensor, TorchTensor):
-                                ref = retrieveTensorRef(tensor, tensorsManager)
+                                ref = retrieveTensorRef(tensor, tensorsManager, tensorsBackToCPU)
                                 if refAsGPU and changeDevice:
                                     ref.toGPU()
                                 setattr(arg, p, ref)
@@ -214,7 +216,7 @@ def method_wrapper(func):
                     for p in props:
                         tensor = getattr(emb, p)
                         if isinstance(tensor, TensorRef):
-                            ref = retrieveTensorRef(tensor, tensorsManager)
+                            ref = retrieveTensorRef(tensor, tensorsManager, tensorsBackToCPU)
                             tens = None
                             if refAsGPU:
                                 tens = ref.target
@@ -232,15 +234,19 @@ def method_wrapper(func):
             for r in refs:
                 if tensorsBackToCPU:
                     r.toCPU()
-                #r.uncount()
+                # r.uncount()
                 r.stackExit()
+
+            if not tensorsBackToCPU:
+                for r in newRefs:
+                    r.release()
 
             for e in embeddings:
                 props = dir(e)
                 for p in props:
                     tensor = getattr(e, p)
                     if isinstance(tensor, TorchTensor):
-                        ref = retrieveTensorRef(tensor, tensorsManager)
+                        ref = retrieveTensorRef(tensor, tensorsManager, tensorsBackToCPU)
                         tens = ref.target
                         if tensorsBackToCPU:
                             tens = ref.toCPU()
@@ -252,12 +258,12 @@ def method_wrapper(func):
 
             if not _returnNormalTensor and TorchTensor is not None:
                 if isinstance(result, TorchTensor):
-                    ref = retrieveTensorRef(result, tensorsManager)
+                    ref = retrieveTensorRef(result, tensorsManager, tensorsBackToCPU)
                     if tensorsBackToCPU:
                         ref.toCPU()
                     return ref
 
-            if changeDevice:
+            if changeDevice and not tensorsBackToCPU:
                 tensorRefsTracker.checkTensors()
 
             return result
