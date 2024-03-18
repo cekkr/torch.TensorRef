@@ -143,7 +143,7 @@ def method_wrapper(func):
             # If at lower level, force passing as Tensor
             if inMaxLevel:
                 argsAsRef = False
-                _returnNormalTensor = True
+                _returnNormalTensor = not tensorsBackToCPU
 
             refs = []
             newRefs = []
