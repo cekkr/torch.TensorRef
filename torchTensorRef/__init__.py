@@ -49,13 +49,14 @@ injectTo = ['torch']
 exclude = [
             'torch.fx', 'torch.jit', 'torch.autograd', 'torchgen', 'torch.storage', 'functools', 'torch.utils', 'torch.library', 'torch.cuda',
             'torchTensorRef',
-            'torch._tensor', 'torch._C', 'torch._utils'
+            #'torch._tensor', 'torch._C', 'torch._utils'
             #'torch._',
-            'torch.is_grad_enabled', 'torch.get_default_dtype', 'torch.no_grad'
+            'torch.is_grad_enabled', 'torch.get_default_dtype', 'torch.no_grad',
+            'torch.load', 'torch.serialization'
 ]
 
 functionsAsIs = [
-    'torch.is_grad_enabled', 'torch.get_default_dtype', 'torch.cat', 'torch.stack', 'torch.isfinite', 'torch.isnan'
+    'torch.is_grad_enabled', 'torch.get_default_dtype', 'torch.cat', 'torch.stack', 'torch.isfinite', 'torch.isnan', 'torch.ceil'
 ]
 
 def startsWith(str, arr):
@@ -82,7 +83,7 @@ def method_wrapper(func):
 
     origFunctions[name] = func
 
-    passAsRef = name not in ['torch.nn.modules.module._load_from_state_dict', 'torch.serialization._load']
+    passAsRef = name not in ['torch.nn.modules.module._load_from_state_dict'] and not startsWith(name, ['torch.serialization'])
     ignoreNaNChecker = name in ['torch.nn.modules.module.load_state_dict', 'torch.tensor']
     #if name.startswith('torch.nn.modules'):
     #    passAsRef = True
@@ -126,7 +127,7 @@ def method_wrapper(func):
             changeDevice = True
             simpleFunction = False
             if (name in functionsAsIs
-                    or startsWith(name, ['torch.nn.parameter.']) or endsWith(name, ['load_from_state_dict', 'load_state_dict'])):
+                    or startsWith(name, ['torch.nn.parameter.', 'torch._refs.']) or endsWith(name, ['load_from_state_dict', 'load_state_dict'])):
                 argsAsRef = False
                 changeDevice = False
                 refAsGPU = False
