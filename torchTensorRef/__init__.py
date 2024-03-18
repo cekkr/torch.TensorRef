@@ -49,7 +49,7 @@ injectTo = ['torch']
 exclude = [
             'torch.fx', 'torch.jit', 'torch.autograd', 'torchgen', 'torch.storage', 'functools', 'torch.utils', 'torch.library', 'torch.cuda',
             'torchTensorRef',
-            #'torch._tensor', 'torch._C', 'torch._utils'
+            'torch._tensor', 'torch._C', 'torch._utils'
             #'torch._',
             'torch.is_grad_enabled', 'torch.get_default_dtype', 'torch.no_grad'
 ]
@@ -114,19 +114,27 @@ def method_wrapper(func):
 
             inMaxLevel = False # methodStack.level > maxStackLevel
 
-            if len(name.split('.')) == 2 or name.startswith('torch.nn.functional.'): # basic function
+            if ((len(name.split('.'))) == 2 or startsWith(name, ['torch.nn.functional.'])): # basic function
                 tensorsBackToCPU = True
                 inMaxLevel = True
             else:
                 pass # for debugging
 
+            refAsGPU = True  # set it as false make the algorithm stop working
+
             argsAsRef = classWrapper.argsAsRef
             changeDevice = True
             simpleFunction = False
-            if name in functionsAsIs:
+            if (name in functionsAsIs
+                    or startsWith(name, ['torch.nn.parameter.']) or endsWith(name, ['load_from_state_dict', 'load_state_dict'])):
                 argsAsRef = False
                 changeDevice = False
+                refAsGPU = False
                 simpleFunction = True
+
+            if name in ['torch.load']:
+                tensorsBackToCPU = False
+                inMaxLevel = True
 
             if VERBOSE_HOOK:
                 #print("Stack: " + stackFullName)
@@ -139,8 +147,6 @@ def method_wrapper(func):
 
             if name.startswith('torch._refs') or name == 'torch.group_norm':
                 methodStack.set('inOp', True)
-
-            refAsGPU = True # set it as false make the algorithm stop working
 
             # If at lower level, force passing as Tensor
             if inMaxLevel:
@@ -213,7 +219,7 @@ def method_wrapper(func):
                             arg = arg.toGPU()
                     if isinstance(arg, list):
                         for a in range(0, len(arg)):
-                            arg[a] = argToTensor(arg[0])
+                            arg[a] = argToTensor(arg[a])
                     if isinstance(arg, dict):
                         for k, v in arg.items():
                             arg[k] = argToTensor(v)
@@ -232,12 +238,11 @@ def method_wrapper(func):
                     for p in props:
                         tensor = getattr(emb, p)
                         if isinstance(tensor, TensorRef):
-                            ref = retrieveTensorRef(tensor, tensorsManager, tensorsBackToCPU)
                             tens = None
                             if refAsGPU:
-                                tens = ref.target
+                                tens = tensor.target
                             elif changeDevice:
-                                tens = ref.toGPU()
+                                tens = tensor.toGPU()
                             setattr(emb, p, tens)
 
                 result = func(*args, **kwargs)
@@ -272,15 +277,14 @@ def method_wrapper(func):
 
             methodStack = methodStack.exit()
 
-            if not _returnNormalTensor and TorchTensor is not None:
-                if isinstance(result, TorchTensor):
-                    ref = retrieveTensorRef(result, tensorsManager, tensorsBackToCPU)
-                    if tensorsBackToCPU:
-                        ref.toCPU()
-                    return ref
-
-            if changeDevice and not tensorsBackToCPU:
+            if changeDevice and tensorsBackToCPU:
                 tensorRefsTracker.checkTensors()
+
+            if isinstance(result, TorchTensor):
+                ref = retrieveTensorRef(result, tensorsManager, tensorsBackToCPU)
+                if tensorsBackToCPU:
+                    ref.toCPU()
+                return ref
 
             return result
 
