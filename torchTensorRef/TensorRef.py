@@ -422,9 +422,6 @@ def createMagicWrapper(m):
 
     if magicRef is None:
         def makeWrapper(m, magic):
-            if m in ['__bool__']:
-                return magic
-
             def magicWrapper(*args, **kwargs):
 
                 if VERBOSE_HOOK:
@@ -518,3 +515,14 @@ for m in magics:
             createMagicWrapper(m)
         except Exception as err:
             pass
+
+###
+###
+'''
+orig_tensor_eq = torch.Tensor.__eq__
+def tensor_eq(self, other):
+    if isinstance(other, TensorRef):
+        other = other.target
+    return orig_tensor_eq(self, other)
+torch.Tensor.__eq__ = orig_tensor_eq
+'''
