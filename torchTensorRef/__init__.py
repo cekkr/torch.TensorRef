@@ -51,15 +51,24 @@ exclude = [
             'torchTensorRef',
             #'torch._tensor', 'torch._C', 'torch._utils'
             'torch._',
-            'torch.is_grad_enabled', 'torch.get_default_dtype', 'torch.cat', 'torch.stack', 'torch.isfinite'
-           ]
+]
+
+functionsAsIs = [
+    'torch.is_grad_enabled', 'torch.get_default_dtype', 'torch.cat', 'torch.stack', 'torch.isfinite', 'torch.isnan',
+]
 
 def startsWith(str, arr):
     for a in arr:
-        if str.startswith(a): # or str.endswith(a):
+        if str.startswith(a):
             return True 
     return False
 
+
+def endsWith(str, arr):
+    for a in arr:
+        if str.endswith(a):
+            return True
+    return False
 
 methodStack = Stack()
 
@@ -69,9 +78,9 @@ def method_wrapper(func):
     if func in itsMe or startsWith(name, exclude) or not startsWith(name, injectTo):
         return func
 
-    passAsRef = False
-    if name.startswith('torch.nn.modules'):
-        passAsRef = True
+    passAsRef = True
+    #if name.startswith('torch.nn.modules'):
+    #    passAsRef = True
 
     passTensorRefs = False
     '''
@@ -92,10 +101,21 @@ def method_wrapper(func):
             global methodStack
 
             if VERBOSE_HOOK:
-                print('Fun Hook: ', name)
+                print('Fun Hook: ', name)                
 
-            methodStack = methodStack.enter()
-            methodStack.name = name
+            methodStack = methodStack.enter(name)
+            stackFullName = methodStack.getFullName()
+
+            argsAsRef = classWrapper.argsAsRef
+            changeDevice = True
+            simpleFunction = False
+            if startsWith(name, functionsAsIs) or  endsWith(name, functionsAsIs):
+                argsAsRef = False
+                changeDevice = False
+                simpleFunction = True
+
+            if VERBOSE_HOOK:
+                print("Stack: " + methodStack.getFullName())
 
             _returnNormalTensor = returnNormalTensor
 
@@ -115,7 +135,7 @@ def method_wrapper(func):
                         arg = retrieveTensorRef(arg, tensorsManager)
                     if isinstance(arg, TensorRef):
                         refs.append(arg)
-                        if refAsGPU:
+                        if refAsGPU and changeDevice:
                             arg.toGPU()
                     if isinstance(arg, torch.nn.Module):
                         props = dir(arg)
@@ -124,7 +144,7 @@ def method_wrapper(func):
                             tensor = getattr(arg, p)
                             if isinstance(tensor, TorchTensor):
                                 ref = retrieveTensorRef(tensor, tensorsManager)
-                                if refAsGPU:
+                                if refAsGPU and changeDevice:
                                     ref.toGPU()
                                 setattr(arg, p, ref)
                 return arg
@@ -141,18 +161,18 @@ def method_wrapper(func):
 
             result = None
 
-            if classWrapper.argsAsRef:
+            if argsAsRef:
                 try:
                     result = func(*args, **kwargs)
-                except:
-                    classWrapper.argsAsRef = False
+                except Exception as err:
+                    argsAsRef = classWrapper.argsAsRef = False
 
-            if not classWrapper.argsAsRef:
+            if not argsAsRef:
                 def argToTensor(arg):
                     if isinstance(arg, TensorRef):
                         if refAsGPU:
                             arg = arg.target
-                        else:
+                        elif changeDevice:
                             arg = arg.toGPU()
                     return arg
 
@@ -195,7 +215,8 @@ def method_wrapper(func):
                     ref.toCPU()
                     return ref
 
-            tensorRefsTracker.checkTensors()
+            if changeDevice:
+                tensorRefsTracker.checkTensors()
 
             return result
 

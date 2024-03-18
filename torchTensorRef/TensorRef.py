@@ -229,8 +229,8 @@ class TensorRef(ABC, TensorRefBase):
                 if VERBOSE_HOOK:            
                     print(f"Returning {name}")
 
-                tensorRefsTracker.printStatus()
-                tensorRefsTracker.checkTensors()
+                #tensorRefsTracker.printStatus()
+                #tensorRefsTracker.checkTensors()
 
                 return result
 
