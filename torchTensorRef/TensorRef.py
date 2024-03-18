@@ -4,7 +4,7 @@ from abc import ABC
 from functools import partial
 import time
 
-from .common import tensorsManager, VERBOSE_HOOK
+from .common import tensorsManager, VERBOSE_HOOK, VERBOSE_TENSOR_TRANSFER
 from .hook import TensorRefBase
 from .TensorRefsTracker import TensorRefsTracker, SetTensorRefType
 
@@ -244,7 +244,7 @@ class TensorRef(ABC, TensorRefBase):
     def toGPU(self):
         if isinstance(self.target, Tensor):
             if self.target.is_cpu:
-                if VERBOSE_HOOK:
+                if VERBOSE_TENSOR_TRANSFER:
                     print('TensorRef.toGPU')
                 dev = self.proxyInfo.tensorsManager.device
                 if dev is not None and dev != "cpu":
@@ -273,7 +273,7 @@ class TensorRef(ABC, TensorRefBase):
     def toCPU(self):
         if isinstance(self.target, Tensor):
             if not self.target.is_cpu:
-                if VERBOSE_HOOK:
+                if VERBOSE_TENSOR_TRANSFER:
                     print('TensorRef.toCPU')
                 tensorRefsTracker.uncountTensor(self)
                 res = self.target.to(device="cpu")

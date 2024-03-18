@@ -1,4 +1,4 @@
-from .common import VERBOSE_TENSORS_TRACKER
+from .common import VERBOSE_TENSORS_TRACKER, VERBOSE_TENSORS_TRACKER_STATUS
 import sys
 import copy
 import gc
@@ -123,7 +123,7 @@ class TensorRefsTracker:
                         break
             self.gcCollect()
 
-        if VERBOSE_TENSORS_TRACKER:
+        if VERBOSE_TENSORS_TRACKER_STATUS:
             print('Tensors:\t CPU: '+str(self.numOnCPU)+' \t GPU: '+str(self.numOnGPU))
 
             cpuGB = self.sizeOnCPU / (1024) ** 3
@@ -154,17 +154,24 @@ class TensorRefsTracker:
 
         tensorRefs = copy.copy(self.tensorRefs)
         for key, tensorRef in tensorRefs.items():
-            countRefs = sys.getrefcount(tensorRef)
-            if countRefs <= properties['minRefsTensorRef']: # self.tensorRefs + tensorRef + getrefcount(tensorRef) + tensorRefs + self.refByTensor
-                if not tensorRef.proxyInfo.locked:
+            if not tensorRef.proxyInfo.locked:
+                countRefs = sys.getrefcount(tensorRef)
+                if countRefs <= properties['minRefsTensorRef']: # self.tensorRefs + tensorRef + getrefcount(tensorRef) + tensorRefs + self.refByTensor
+
                     if VERBOSE_TENSORS_TRACKER:
                         print("Removing unused tensorRef...")
 
-                    removes = True
-                    self.uncountTensor(tensorRef, True)
-                    self.remTensorRef(tensorRef)
-                    tensorRef.target = None
-                else:
+                    countTensorRef = sys.getrefcount(tensorRef.target)
+                    if countTensorRef <= properties['minRefsTensor']:
+                        self.uncountTensor(tensorRef, True)
+                        tensorRef.target = None
+                        self.remTensorRef(tensorRef)
+                        removes = True
+                    else:
+                        if VERBOSE_TENSORS_TRACKER:
+                            print("TensorRef with still used tensor")
+            else:
+                if VERBOSE_TENSORS_TRACKER:
                     print("Impossible to remove locked tensorRef")
 
         # Pretty useless double checking
