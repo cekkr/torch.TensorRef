@@ -438,8 +438,8 @@ def createMagicWrapper(m):
                 if VERBOSE_HOOK:
                     print('TRef Magic: ', m)
 
+                self = args[0]
                 if m == '__bool__':
-                    self = args[0]
                     if isinstance(self, TensorRef):
                         self = self.target
                     return self.__bool__()
@@ -489,7 +489,6 @@ def createMagicWrapper(m):
 
                     args = tuple(args)
 
-                self = args[0]
                 ref, args, kwargs = levelTensorsArgs(args, kwargs, opts)
 
                 self.toGPU()
