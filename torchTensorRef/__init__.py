@@ -54,7 +54,7 @@ exclude = [
             #'torch._tensor', 'torch._C', 'torch._utils'
             'torch._',
             'torch.is_grad_enabled', 'torch.get_default_dtype', 'torch.no_grad',
-            'torch.load', 'torch.serialization',
+            #'torch.load', 'torch.serialization',
 ]
 
 functionsAsIs = [
@@ -138,7 +138,7 @@ def method_wrapper(func):
                 refAsGPU = False
                 simpleFunction = True
 
-            if name in ['torch.load']:
+            if name in ['torch.load'] and False:
                 tensorsBackToCPU = False
                 inMaxLevel = True
 
@@ -159,7 +159,7 @@ def method_wrapper(func):
                 argsAsRef = False
                 _returnNormalTensor = _returnNormalTensor or not tensorsBackToCPU
 
-            isModelLoading = name.startswith("torch.nn.modules") and ('state' in name or 'parameter' in name)
+            isModelLoading = name.startswith("torch.nn.modules") and ('state' in name or 'parameter' in name or 'dict' in name)
             if methodStack.avgPreparationTime > methodStack.avgExecTime or isModelLoading:
                 moveToAccelerator = False
 
@@ -236,13 +236,13 @@ def method_wrapper(func):
                     if not classWrapper.nanChecked:
                         try:
                             if origFunctions['torch.isnan'](result).any():
-                                argsAsRef = classWrapper.argsAsRef = False
+                                argsAsRef = False # classWrapper.argsAsRef =
                         except:
                             pass
                         classWrapper.nanChecked = True
 
                 except Exception as err:
-                    argsAsRef = classWrapper.argsAsRef = False
+                    argsAsRef = False # classWrapper.argsAsRef = 
 
             if not argsAsRef:
                 def argToTensor(arg):
