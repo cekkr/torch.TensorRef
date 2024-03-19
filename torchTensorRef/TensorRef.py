@@ -130,11 +130,8 @@ class TensorRef(ABC, TensorRefBase):
 
         # Hole-fillers
         if attr is None:
-            if name == 'detach':
-                def stillMe():
-                    print("deatch none")
-                    return self
-                return stillMe
+            if name == 'detach':                
+                return self.toCPU
 
         if callable(attr):
             if name in ['shape']:
