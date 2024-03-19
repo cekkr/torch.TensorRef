@@ -49,7 +49,7 @@ def checkSelf(self):
 injectTo = ['torch']
 exclude = [
             'torch.fx', 'torch.jit', 'torch.autograd', 'torchgen', 'torch.storage', 'functools', 'torch.utils', 'torch.library', 'torch.cuda',
-            "torch.collections", "torch.tensor",
+            #"torch.collections", "torch.tensor",
             'torchTensorRef',
             #'torch._tensor', 'torch._C', 'torch._utils'
             'torch._',
@@ -362,7 +362,7 @@ def method_wrapper(func):
                 tensorRefsTracker.checkTensors()
 
             if isinstance(result, TorchTensor):
-                ref = retrieveTensorRef(result, tensorsManager, tensorsBackToCPU)
+                ref = retrieveTensorRef(result, tensorsManager)
                 if tensorsBackToCPU:
                     ref.toCPU()
                 if _returnNormalTensor:

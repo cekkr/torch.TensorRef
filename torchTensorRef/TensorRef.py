@@ -152,7 +152,9 @@ class TensorRef(ABC, TensorRefBase):
                     print(f"Calling {name}")
 
                 # improve this: don't move on GPU if the operation isn't related
+                accelerate = False
                 if not name.endswith('_') and name not in ['set_', 'numpy', 'detach']:
+                    accelerate = True
                     self.toGPU()
                     self.proxyInfo.locked = True
 
@@ -167,7 +169,10 @@ class TensorRef(ABC, TensorRefBase):
                         value = retrieveTensorRef(value, self.proxyInfo.tensorsManager)
                     if isinstance(value, TensorRef):
                         proxies.append(value)
-                        args[a] = value.toGPU()
+                        if accelerate:
+                            args[a] = value.toGPU()
+                        else:
+                            args[a] = value.toCPU()
                         value.proxyInfo.locked = True
 
                     if name == '__torch_function__':
@@ -185,7 +190,10 @@ class TensorRef(ABC, TensorRefBase):
                         value = retrieveTensorRef(value, self.proxyInfo.tensorsManager)
                     if isinstance(value, TensorRef):
                         proxies.append(value)
-                        kwargs[key] = value.toGPU()
+                        if accelerate:
+                            kwargs[key] = value.toGPU()
+                        else:
+                            kwargs[key] = value.toCPU()
 
                 '''
                 isCpu = self.target.is_cpu
