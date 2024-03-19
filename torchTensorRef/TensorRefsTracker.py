@@ -107,6 +107,7 @@ class TensorRefsTracker:
         except:
             pass
 
+        self.checkTensors()
         # debug purposes
         #count = sys.getrefcount(tensor)
         #print(count)
@@ -142,7 +143,7 @@ class TensorRefsTracker:
             pass
 
     def gcCollect(self):
-        return
+        #return
         gc.collect()
         clearCuda()
 

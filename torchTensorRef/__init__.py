@@ -134,7 +134,7 @@ def method_wrapper(func):
             if (name in functionsAsIs
                     or startsWith(name, ['torch.nn.parameter.', 'torch._refs.']) or endsWith(name, ['load_from_state_dict', 'load_state_dict'])):
                 argsAsRef = False
-                moveToAccelerator = False
+                #moveToAccelerator = False
                 refAsGPU = False
                 simpleFunction = True
 
@@ -159,7 +159,8 @@ def method_wrapper(func):
                 argsAsRef = False
                 _returnNormalTensor = _returnNormalTensor or not tensorsBackToCPU
 
-            if methodStack.avgPreparationTime > methodStack.avgExecTime:
+            isModelLoading = name.startswith("torch.nn.modules") and ('state' in name or 'parameter' in name)
+            if methodStack.avgPreparationTime > methodStack.avgExecTime or isModelLoading:
                 moveToAccelerator = False
 
             refs = []

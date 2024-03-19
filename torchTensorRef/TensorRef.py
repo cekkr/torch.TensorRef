@@ -23,7 +23,7 @@ def retrieveTensorRef(tensor, tensorsManager=None, checkExistingRef=True):
 
 class ProxyInfo:
     def __init__(self):
-        self.device = "cpu"
+        self.device = "accelerator"
         self.usageNs = 0
         self.locked = False
         self.stacks = 0
@@ -129,8 +129,11 @@ class TensorRef(ABC, TensorRefBase):
 
         # Hole-fillers
         if attr is None:
-            if name == 'detach':                
-                return self.toCPU
+            if name == 'detach':
+                def setCpuAsFavouriteDev():
+                    self.proxyInfo.device = 'cpu'
+                    return self.toCPU()
+                return setCpuAsFavouriteDev
 
         if callable(attr):
             if name in ['shape']:
@@ -142,7 +145,8 @@ class TensorRef(ABC, TensorRefBase):
                 if VERBOSE_HOOK:            
                     print(f"Calling {name}")
 
-                if name not in ['set_', 'numpy', 'detach']:
+                # improve this: don't move on GPU if the operation isn't related
+                if not name.endswith('_') and name not in ['set_', 'numpy', 'detach']:
                     self.toGPU()
                     self.proxyInfo.locked = True
 
@@ -237,6 +241,9 @@ class TensorRef(ABC, TensorRefBase):
         self.proxyInfo.usageNs = (time.time_ns() + self.proxyInfo.usageNs)/2
 
     def toGPU(self):
+        if self.proxyInfo.device == 'cpu':
+            return self.target
+
         if isinstance(self.target, Tensor):
             if self.target.is_cpu:
                 if VERBOSE_TENSOR_TRANSFER:
@@ -443,7 +450,7 @@ def createMagicWrapper(m):
                 opts = {}
 
                 # todo: __array__ issue fixed at the root (of calling numpy). Try to remove this and the next
-                if m == '__array__':  # conversion to numpy must be done on CPU
+                if m == '__array__' or self.proxyInfo.device == 'cpu':  # conversion to numpy must be done on CPU
                     opts['onCPU'] = True
 
                 # What an ugly thing...
@@ -478,6 +485,8 @@ def createMagicWrapper(m):
 
                 self = args[0]
                 ref, args, kwargs = levelTensorsArgs(args, kwargs, opts)
+
+                self.toGPU()
 
                 try:
                     for arg in args:
