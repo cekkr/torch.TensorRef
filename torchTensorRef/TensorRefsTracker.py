@@ -75,6 +75,9 @@ class TensorRefsTracker:
         tensor = tensorRef
         if isinstance(tensorRef, TensorRef):
             tensor = tensorRef.target
+            if tensor is None:
+                return
+            tensorRef.target = None
             try:
                 del self.tensorByRef[id(tensorRef)]
             except:
@@ -164,7 +167,6 @@ class TensorRefsTracker:
                     countTensorRef = sys.getrefcount(tensorRef.target)
                     if countTensorRef <= properties['minRefsTensor']:
                         self.uncountTensor(tensorRef, True)
-                        tensorRef.target = None
                         self.remTensorRef(tensorRef)
                         removes = True
                     else:

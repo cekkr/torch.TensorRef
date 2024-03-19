@@ -251,10 +251,12 @@ class TensorRef(ABC, TensorRefBase):
                     if dt is torch.float64:
                         dt = torch.float32
 
+                    oldTarget = self.target
                     tensorRefsTracker.uncountTensor(self)
-                    res = self.target.to(device=dev, dtype=dt)                    
+                   
+                    res = oldTarget.to(device=dev, dtype=dt)
 
-                    if isinstance(self.target, torch.nn.Parameter) and not isinstance(res, torch.nn.Parameter):
+                    if isinstance(oldTarget, torch.nn.Parameter) and not isinstance(res, torch.nn.Parameter):
                         res = torch.nn.Parameter(res)
                     else:
                         #res = res.to(torch.get_default_dtype())
@@ -274,11 +276,14 @@ class TensorRef(ABC, TensorRefBase):
             if not self.target.is_cpu:
                 if VERBOSE_TENSOR_TRANSFER:
                     print('TensorRef.toCPU')
+
+                oldTarget = self.target
                 tensorRefsTracker.uncountTensor(self)
-                res = self.target.to(device="cpu")
+
+                res = oldTarget.to(device="cpu")
                 #res = res.to(torch.get_default_dtype()) # ensure Tensor default type
 
-                if isinstance(self.target, torch.nn.Parameter) and not isinstance(res, torch.nn.Parameter):
+                if isinstance(oldTarget, torch.nn.Parameter) and not isinstance(res, torch.nn.Parameter):
                     res = torch.nn.Parameter(res)
 
                 self.target = res
