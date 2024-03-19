@@ -177,10 +177,10 @@ def method_wrapper(func):
                                 if refAsGPU and changeDevice:
                                     ref.toGPU()
                                 setattr(arg, p, ref.target)
-                if isinstance(arg, list) and False:
+                if isinstance(arg, list) and False: # this cause an error during the loading of the checkpoints... (size mismatch)
                     for a in range(0, len(arg)):
                         arg[a] = argToRef(arg[0])
-                if isinstance(arg, dict) and False:
+                if isinstance(arg, dict):
                     for k,v in arg.items():
                         arg[k] = argToRef(v)
                 return arg
