@@ -314,11 +314,7 @@ def method_wrapper(func):
                     if not _returnNormalTensor:
                         arg = retrieveTensorRef(arg, tensorsManager)
                 if isinstance(arg, TensorRef):
-                    tens = None
-                    if moveToAccelerator: # not intuitive action
-                        tens = arg.toCPU()
-                    #else: # this would be very stupid
-                    #    tens = arg.toGPU()
+                    tens = arg.toCPU()
                     if isBaseTensor:
                         arg = tens
                 return arg
