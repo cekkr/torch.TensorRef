@@ -467,7 +467,7 @@ def createMagicWrapper(m):
 
                 # What an ugly thing...
                 if isTorchFun:
-                    opts['asRef'] = True
+                    #opts['asRef'] = True
                     args = list(args)
 
                     fun = args[1]
@@ -496,8 +496,8 @@ def createMagicWrapper(m):
 
                     args = tuple(args)
 
+                #todo: make an attempt, if tensors are on different devices, move the arguments to CPU
                 ref, args, kwargs = levelTensorsArgs(args, kwargs, opts)
-
                 self.toGPU()
 
                 try:
