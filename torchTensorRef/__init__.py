@@ -159,7 +159,8 @@ def method_wrapper(func):
                 argsAsRef = False
                 _returnNormalTensor = _returnNormalTensor or not tensorsBackToCPU
 
-            isModelLoading = name.startswith("torch.nn.modules") and ('state' in name or 'parameter' in name or 'dict' in name)
+            isModelLoading = (name.startswith("torch.nn.modules")
+                              and ('state' in name or 'parameter' in name or 'dict' in name or 'named' in name))
             if methodStack.avgPreparationTime > methodStack.avgExecTime or isModelLoading:
                 moveToAccelerator = False
 
@@ -242,7 +243,7 @@ def method_wrapper(func):
                         classWrapper.nanChecked = True
 
                 except Exception as err:
-                    argsAsRef = False # classWrapper.argsAsRef = 
+                    argsAsRef = False # classWrapper.argsAsRef =
 
             if not argsAsRef:
                 def argToTensor(arg):

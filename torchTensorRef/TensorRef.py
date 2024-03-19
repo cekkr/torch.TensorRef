@@ -439,7 +439,10 @@ def createMagicWrapper(m):
                     print('TRef Magic: ', m)
 
                 if m == '__bool__':
-                    return args[0].__bool__()
+                    self = args[0]
+                    if isinstance(self, TensorRef):
+                        self = self.target
+                    return self.__bool__()
 
                 '''
                 refs = []
