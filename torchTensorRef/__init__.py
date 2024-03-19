@@ -53,7 +53,7 @@ exclude = [
             #'torch._tensor', 'torch._C', 'torch._utils'
             'torch._',
             'torch.is_grad_enabled', 'torch.get_default_dtype', 'torch.no_grad',
-            'torch.load', 'torch.serialization'
+            'torch.load', 'torch.serialization',
 ]
 
 functionsAsIs = [
@@ -104,6 +104,9 @@ def method_wrapper(func):
         def funWrapper(*args, **kwargs):
 
             global methodStack
+
+            if methodStack.get('asYouAre') is True:
+                return func(*args, **kwargs)
 
             if VERBOSE_HOOK:
                 print('Fun Hook: ', name + ' \t', methodStack.level)
@@ -170,6 +173,7 @@ def method_wrapper(func):
                     if isinstance(arg, torch.nn.Module):
                         props = dir(arg)
                         embeddings.append(arg)
+                        methodStack.set('asYouAre', True)
                         for p in props:
                             tensor = getattr(arg, p)
                             if isinstance(tensor, TorchTensor):
@@ -177,6 +181,7 @@ def method_wrapper(func):
                                 if refAsGPU and changeDevice:
                                     ref.toGPU()
                                 setattr(arg, p, ref.target)
+                        methodStack.set('asYouAre', False)
                 if isinstance(arg, list) and False: # this cause an error during the loading of the checkpoints... (size mismatch)
                     for a in range(0, len(arg)):
                         arg[a] = argToRef(arg[0])
@@ -237,6 +242,7 @@ def method_wrapper(func):
 
                 for emb in embeddings:
                     props = dir(emb)
+                    methodStack.set('asYouAre', True)
                     for p in props:
                         tensor = getattr(emb, p)
                         if isinstance(tensor, TensorRef):
@@ -246,7 +252,7 @@ def method_wrapper(func):
                             elif changeDevice:
                                 tens = tensor.toGPU()
                             setattr(emb, p, tens)
-
+                    methodStack.set('asYouAre', False)
                 result = func(*args, **kwargs)
 
                 for ref in refs:
@@ -266,6 +272,7 @@ def method_wrapper(func):
 
             for e in embeddings:
                 props = dir(e)
+                methodStack.set('asYouAre', True)
                 for p in props:
                     tensor = getattr(e, p)
                     if isinstance(tensor, TorchTensor):
@@ -276,7 +283,7 @@ def method_wrapper(func):
                         if _returnNormalTensor:
                             ref = tens
                         setattr(e, p, ref)
-
+                methodStack.set('asYouAre', False)
             methodStack = methodStack.exit()
 
             if changeDevice and tensorsBackToCPU:
