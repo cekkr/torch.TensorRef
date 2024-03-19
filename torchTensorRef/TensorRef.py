@@ -61,7 +61,7 @@ def levelTensorsArgs(args, kwargs, opts={}):
     if isinstance(self, TensorRef):
         manager = self.proxyInfo.tensorsManager
 
-    ref = { 'proxies': [], 'tensorsManager': manager, 'onCPU': False }
+    ref = { 'proxies': [], 'tensorsManager': manager, 'onCPU': False, 'asRef': False }
     if 'onCPU' in opts:
         ref['onCPU'] = opts['onCPU']
     if 'asRef' in opts:
