@@ -33,10 +33,14 @@ def levelArg(arg, ref):
         arg = retrieveTensorRef(arg, ref['tensorsManager'])
     if isinstance(arg, TensorRef):
         ref['proxies'].append(arg)
+        tens = arg.target
         if not ref['onCPU']:
-            arg = arg.toGPU()
+            tens = arg.toGPU()
         else:
-            arg = arg.toCPU()
+            tens = arg.toCPU()
+
+        if not ref['asRef']:
+            arg = tens
 
     if isinstance(arg, tuple):
         arg = list(arg)
@@ -60,6 +64,8 @@ def levelTensorsArgs(args, kwargs, opts={}):
     ref = { 'proxies': [], 'tensorsManager': manager, 'onCPU': False }
     if 'onCPU' in opts:
         ref['onCPU'] = opts['onCPU']
+    if 'asRef' in opts:
+        ref['asRef'] = opts['asRef']
 
     args = list(args)
 
@@ -461,6 +467,7 @@ def createMagicWrapper(m):
 
                 # What an ugly thing...
                 if isTorchFun:
+                    opts['asRef'] = True
                     args = list(args)
 
                     fun = args[1]
