@@ -224,6 +224,9 @@ def method_wrapper(func):
                 ref.onUsage()
                 ref.stackEnter()
 
+            ###
+            ###
+            ###
             result = None
             if argsAsRef:
                 try:

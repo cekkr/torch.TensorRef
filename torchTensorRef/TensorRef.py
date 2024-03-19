@@ -299,7 +299,7 @@ class TensorRef(ABC, TensorRefBase):
     def stackExit(self):
         self.proxyInfo.stacks -= 1
 
-        if self.proxyInfo.stacks <= 0:
+        if self.proxyInfo.stacks < 0:
             self.release()
 
     def countReferences(self):
