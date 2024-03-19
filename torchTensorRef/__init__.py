@@ -317,8 +317,8 @@ def method_wrapper(func):
                     tens = None
                     if moveToAccelerator: # not intuitive action
                         tens = arg.toCPU()
-                    else:
-                        tens = arg.toGPU()
+                    #else: # this would be very stupid
+                    #    tens = arg.toGPU()
                     if isBaseTensor:
                         arg = tens
                 return arg
