@@ -31,7 +31,6 @@ class ProxyInfo:
 def levelArg(arg, ref):
     if isinstance(arg, Tensor):
         arg = retrieveTensorRef(arg, ref['tensorsManager'])
-        arg.proxyInfo.locked = True
     if isinstance(arg, TensorRef):
         ref['proxies'].append(arg)
         if not ref['onCPU']:
@@ -300,6 +299,9 @@ class TensorRef(ABC, TensorRefBase):
     def stackExit(self):
         self.proxyInfo.stacks -= 1
 
+        if self.proxyInfo.stacks <= 0:
+            self.release()
+
     def countReferences(self):
         return tensorRefsTracker.countTensorRefReferences(self)
 
@@ -482,6 +484,9 @@ def createMagicWrapper(m):
                         if isinstance(arg, TensorRef):
                             arg.stackEnter()
                             arg.onUsage()
+
+                    for proxy in ref['proxies']:
+                        proxy.proxyInfo.locked = True
 
                     res = magic(*args, **kwargs)
 

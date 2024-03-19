@@ -182,15 +182,18 @@ def method_wrapper(func):
                         embeddings.append(arg)
                         methodStack.set('asYouAre', True)
                         for p in props:
-                            tensor = getattr(arg, p)
-                            if isinstance(tensor, TorchTensor):
-                                ref = retrieveTensorRef(tensor, tensorsManager, tensorsBackToCPU)
-                                if refAsGPU:
-                                    if moveToAccelerator:
-                                        ref.toGPU()
-                                    else:
-                                        ref.toCPU()
-                                setattr(arg, p, ref.target)
+                            try:
+                                tensor = getattr(arg, p)
+                                if isinstance(tensor, TorchTensor):
+                                    ref = retrieveTensorRef(tensor, tensorsManager, tensorsBackToCPU)
+                                    if refAsGPU:
+                                        if moveToAccelerator:
+                                            ref.toGPU()
+                                        else:
+                                            ref.toCPU()
+                                    setattr(arg, p, ref.target)
+                            except:
+                                pass
                         methodStack.set('asYouAre', False)
                 if isinstance(arg, list) and False: # this cause an error during the loading of the checkpoints... (size mismatch)
                     for a in range(0, len(arg)):
@@ -283,7 +286,7 @@ def method_wrapper(func):
                     ref.stackEnter()
 
             execEnd = time.time_ns()
-            execDiff = time.time_ns()
+            execDiff = execEnd - execStart
 
             resultStart = time.time_ns()
             for r in refs:
@@ -300,15 +303,18 @@ def method_wrapper(func):
                 props = dir(e)
                 methodStack.set('asYouAre', True)
                 for p in props:
-                    tensor = getattr(e, p)
-                    if isinstance(tensor, TorchTensor):
-                        ref = retrieveTensorRef(tensor, tensorsManager, tensorsBackToCPU)
-                        tens = ref.target
-                        if tensorsBackToCPU:
-                            tens = ref.toCPU()
-                        if _returnNormalTensor:
-                            ref = tens
-                        setattr(e, p, ref)
+                    try:
+                        tensor = getattr(e, p)
+                        if isinstance(tensor, TorchTensor):
+                            ref = retrieveTensorRef(tensor, tensorsManager, tensorsBackToCPU)
+                            tens = ref.target
+                            if tensorsBackToCPU:
+                                tens = ref.toCPU()
+                            if _returnNormalTensor:
+                                ref = tens
+                            setattr(e, p, ref)
+                    except:
+                        pass
                 methodStack.set('asYouAre', False)
             methodStack = methodStack.exit()
 
