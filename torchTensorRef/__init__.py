@@ -168,7 +168,7 @@ def method_wrapper(func):
             def argToRef(arg):
                 if TensorRef is not None:
                     if isinstance(arg, TorchTensor): #not tensorsBackToCPU and
-                        arg = retrieveTensorRef(arg, tensorsManager, tensorsBackToCPU)
+                        arg = retrieveTensorRef(arg, tensorsManager)
                         newRefs.append(arg)
                     if isinstance(arg, TensorRef):
                         refs.append(arg)
@@ -185,7 +185,7 @@ def method_wrapper(func):
                             try:
                                 tensor = getattr(arg, p)
                                 if isinstance(tensor, TorchTensor):
-                                    ref = retrieveTensorRef(tensor, tensorsManager, tensorsBackToCPU)
+                                    ref = retrieveTensorRef(tensor, tensorsManager)
                                     if refAsGPU:
                                         if moveToAccelerator:
                                             ref.toGPU()
@@ -219,6 +219,10 @@ def method_wrapper(func):
             beginDiff = beginEnd - beginStart
 
             execStart = time.time_ns()
+
+            for ref in refs:
+                ref.onUsage()
+                ref.stackEnter()
 
             result = None
             if argsAsRef:
@@ -281,9 +285,9 @@ def method_wrapper(func):
 
                 result = func(*args, **kwargs)
 
-                for ref in refs:
-                    ref.onUsage()
-                    ref.stackEnter()
+            ###
+            ### Result
+            ###
 
             execEnd = time.time_ns()
             execDiff = execEnd - execStart
@@ -299,6 +303,33 @@ def method_wrapper(func):
                 for r in newRefs:
                     r.release()
 
+            def checkReturnArg(arg):
+                if isinstance(arg, dict):
+                    for k,v in arg.items():
+                        arg[k] = checkReturnArg(v)
+
+                isBaseTensor = False
+                if isinstance(arg, TorchTensor):
+                    isBaseTensor = True
+                    if not _returnNormalTensor:
+                        arg = retrieveTensorRef(arg, tensorsManager)
+                if isinstance(arg, TensorRef):
+                    tens = None
+                    if moveToAccelerator: # not intuitive action
+                        tens = arg.toCPU()
+                    else:
+                        tens = arg.toGPU()
+                    if isBaseTensor:
+                        arg = tens
+                return arg
+
+            args = list(args)
+            for a in range(0, len(args)):
+                args[a] = checkReturnArg(args[a])
+
+            for k,v in kwargs.items():
+                kwargs[k] = checkReturnArg(v)
+
             for e in embeddings:
                 props = dir(e)
                 methodStack.set('asYouAre', True)
@@ -306,7 +337,7 @@ def method_wrapper(func):
                     try:
                         tensor = getattr(e, p)
                         if isinstance(tensor, TorchTensor):
-                            ref = retrieveTensorRef(tensor, tensorsManager, tensorsBackToCPU)
+                            ref = retrieveTensorRef(tensor, tensorsManager)
                             tens = ref.target
                             if tensorsBackToCPU:
                                 tens = ref.toCPU()
