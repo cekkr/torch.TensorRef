@@ -34,9 +34,9 @@ class Stack:
         #    return None
 
         if key not in self.keys:
-            if self.parent != None:
-                return self.parent.get(key, rec+1)
-            else:
+            #if self.parent != None:
+            #    return self.parent.get(key, rec+1)
+            #else:
                 return None 
         return self.keys[key]
     
