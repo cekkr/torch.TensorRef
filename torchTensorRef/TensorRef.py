@@ -438,6 +438,9 @@ def createMagicWrapper(m):
                 if VERBOSE_HOOK:
                     print('TRef Magic: ', m)
 
+                if m == '__bool__':
+                    return args[0].__bool__()
+
                 '''
                 refs = []
                 args = list(args)
