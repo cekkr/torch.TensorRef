@@ -6,6 +6,7 @@ import inspect
 # import copy
 import types
 import typing
+import time
 
 from .hook import Hooks
 from .common import VERBOSE_HOOK, properties
@@ -128,12 +129,12 @@ def method_wrapper(func):
             refAsGPU = True  # set it as false make the algorithm stop working
 
             argsAsRef = classWrapper.argsAsRef
-            changeDevice = True
+            moveToAccelerator = True #TODO: change of logic: create the opportunity to eveluate the best device at the moment
             simpleFunction = False
             if (name in functionsAsIs
                     or startsWith(name, ['torch.nn.parameter.', 'torch._refs.']) or endsWith(name, ['load_from_state_dict', 'load_state_dict'])):
                 argsAsRef = False
-                changeDevice = False
+                moveToAccelerator = False
                 refAsGPU = False
                 simpleFunction = True
 
@@ -158,6 +159,9 @@ def method_wrapper(func):
                 argsAsRef = False
                 _returnNormalTensor = _returnNormalTensor or not tensorsBackToCPU
 
+            if methodStack.avgPreparationTime > methodStack.avgExecTime:
+                moveToAccelerator = False
+
             refs = []
             newRefs = []
             embeddings = []
@@ -168,8 +172,11 @@ def method_wrapper(func):
                         newRefs.append(arg)
                     if isinstance(arg, TensorRef):
                         refs.append(arg)
-                        if refAsGPU and changeDevice:
-                            arg.toGPU()
+                        if refAsGPU:
+                            if moveToAccelerator:
+                                arg.toGPU()
+                            else:
+                                arg.toCPU()
                     if isinstance(arg, torch.nn.Module):
                         props = dir(arg)
                         embeddings.append(arg)
@@ -178,8 +185,11 @@ def method_wrapper(func):
                             tensor = getattr(arg, p)
                             if isinstance(tensor, TorchTensor):
                                 ref = retrieveTensorRef(tensor, tensorsManager, tensorsBackToCPU)
-                                if refAsGPU and changeDevice:
-                                    ref.toGPU()
+                                if refAsGPU:
+                                    if moveToAccelerator:
+                                        ref.toGPU()
+                                    else:
+                                        ref.toCPU()
                                 setattr(arg, p, ref.target)
                         methodStack.set('asYouAre', False)
                 if isinstance(arg, list) and False: # this cause an error during the loading of the checkpoints... (size mismatch)
@@ -189,6 +199,8 @@ def method_wrapper(func):
                     for k,v in arg.items():
                         arg[k] = argToRef(v)
                 return arg
+
+            beginStart = time.time_ns()
 
             args = list(args)
             for a in range(0, len(args)):
@@ -200,8 +212,12 @@ def method_wrapper(func):
             for key, value in kwargs.items():
                 kwargs[key] = argToRef(value)
 
-            result = None
+            beginEnd = time.time_ns()
+            beginDiff = beginEnd - beginStart
 
+            execStart = time.time_ns()
+
+            result = None
             if argsAsRef:
                 try:
                     result = func(*args, **kwargs)
@@ -220,10 +236,13 @@ def method_wrapper(func):
             if not argsAsRef:
                 def argToTensor(arg):
                     if isinstance(arg, TensorRef):
-                        if refAsGPU or not changeDevice:
+                        if refAsGPU:
                             arg = arg.target
                         else:
-                            arg = arg.toGPU()
+                            if moveToAccelerator:
+                                arg = arg.toGPU()
+                            else:
+                                arg = arg.toCPU()
                     if isinstance(arg, list):
                         for a in range(0, len(arg)):
                             arg[a] = argToTensor(arg[a])
@@ -249,17 +268,24 @@ def method_wrapper(func):
                             tens = None
                             if refAsGPU:
                                 tens = tensor.target
-                            elif changeDevice:
-                                tens = tensor.toGPU()
+                            else:
+                                if moveToAccelerator:
+                                    tens = tensor.toGPU()
+                                else:
+                                    tens = tensor.toCPU()
                             setattr(emb, p, tens)
                     methodStack.set('asYouAre', False)
+
                 result = func(*args, **kwargs)
 
                 for ref in refs:
                     ref.onUsage()
                     ref.stackEnter()
 
+            execEnd = time.time_ns()
+            execDiff = time.time_ns()
 
+            resultStart = time.time_ns()
             for r in refs:
                 if tensorsBackToCPU:
                     r.toCPU()
@@ -286,7 +312,15 @@ def method_wrapper(func):
                 methodStack.set('asYouAre', False)
             methodStack = methodStack.exit()
 
-            if changeDevice and tensorsBackToCPU:
+            resultEnd = time.time_ns()
+
+            resultDiff = resultEnd - resultStart
+            preparationTime = resultDiff + beginDiff
+
+            methodStack.avgPreparationTime = (preparationTime+methodStack.avgPreparationTime)/2
+            methodStack.avgExecTime = (execDiff+methodStack.avgExecTime)/2
+
+            if moveToAccelerator and tensorsBackToCPU:
                 tensorRefsTracker.checkTensors()
 
             if isinstance(result, TorchTensor):

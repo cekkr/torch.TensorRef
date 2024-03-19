@@ -14,6 +14,9 @@ class Stack:
             self.keys = copy.copy(parent.keys)
 
         self.name = name
+
+        self.avgPreparationTime = 0
+        self.avgExecTime = 0
         
     def enter(self, name):
         if name in self.subs:
