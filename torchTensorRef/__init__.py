@@ -172,7 +172,7 @@ def method_wrapper(func):
             if methodStack.avgPreparationTime > methodStack.avgExecTime or isModelLoading:
                 moveToAccelerator = False
 
-            def runFunc():
+            def runFunc(*args, **kwargs):
                 if classWrapper.isStaticFunction:
                     self, *args = args
                     return func(*args, *kwargs)
@@ -183,7 +183,7 @@ def method_wrapper(func):
                         se = str(err)
                         if 'positional argument' in se and 'but' in se and 'given' in se:
                             classWrapper.isStaticFunction = True 
-                            return runFunc()
+                            return runFunc(*args, **kwargs)
                         else:
                             raise err
 
@@ -255,7 +255,7 @@ def method_wrapper(func):
             result = None
             if argsAsRef:
                 try:
-                    result = runFunc()
+                    result = runFunc(*args, **kwargs)
 
                     if not classWrapper.nanChecked:
                         try:
@@ -311,7 +311,7 @@ def method_wrapper(func):
                             setattr(emb, p, tens)
                     methodStack.set('asYouAre', False)
 
-                result = runFunc()
+                result = runFunc(*args, **kwargs)
 
             ###
             ### Result
