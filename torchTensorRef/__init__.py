@@ -675,7 +675,7 @@ def noisy_importer(
     if (startsWith(name, injectTo) or (name.startswith('.') and inside != None and startsWith(inside, injectTo))) and not startsWith(name, exclude):
         res = defaultImport(name, locals, globals, fromlist, level)
 
-        if name in excludeFromInjection:
+        if startsWith(name, excludeFromInjection):
             moduleExcludeStack += 1
 
         if moduleExcludeStack <= 0:
