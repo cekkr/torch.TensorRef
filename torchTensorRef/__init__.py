@@ -80,9 +80,6 @@ def endsWith(str, arr):
 
 methodStack = Stack()
 
-def is_static_method(func):
-    return isinstance(func, staticmethod)
-
 itsMe = []
 origFunctions = {}
 
@@ -94,8 +91,7 @@ def method_wrapper(func):
     if VERBOSE_HOOK:
         print("hooking function " + name)
 
-    isStaticMethod = is_static_method(func)
-
+    isStaticFunction = False
     origFunctions[name] = func
 
     passAsRef = name not in ['torch.nn.modules.module._load_from_state_dict'] and not startsWith(name, ['torch.serialization'])
@@ -118,15 +114,12 @@ def method_wrapper(func):
         def funWrapper(*args, **kwargs):
 
             global methodStack
-
+            
             if methodStack.get('asYouAre') is True:
                 return func(*args, **kwargs)
 
             if VERBOSE_HOOK:
                 print('Fun Hook: ', name + ' \t', methodStack.level)
-
-            if isStaticMethod:
-                self, *args = args
 
             maxStackLevel = 5
             tensorsBackToCPU = True # methodStack.level <= maxStackLevel
@@ -179,6 +172,21 @@ def method_wrapper(func):
                               and ('state' in name or 'parameter' in name or 'dict' in name or 'named' in name))
             if methodStack.avgPreparationTime > methodStack.avgExecTime or isModelLoading:
                 moveToAccelerator = False
+
+            def runFunc():
+                if isStaticFunction:
+                    self, *args = args
+                    return func(*args, *kwargs)
+                else:
+                    try:
+                        func(*args, *kwargs)
+                    except Exception as err:
+                        se = str(err)
+                        if 'positional argument' in se and 'but' in se and 'given' in se:
+                            isStaticFunction = True 
+                            return runFunc()
+                        else:
+                            raise err
 
             refs = []
             newRefs = []
@@ -248,7 +256,7 @@ def method_wrapper(func):
             result = None
             if argsAsRef:
                 try:
-                    result = func(*args, **kwargs)
+                    result = runFunc()
 
                     if not classWrapper.nanChecked:
                         try:
@@ -304,7 +312,7 @@ def method_wrapper(func):
                             setattr(emb, p, tens)
                     methodStack.set('asYouAre', False)
 
-                result = func(*args, **kwargs)
+                result = runFunc()
 
             ###
             ### Result
