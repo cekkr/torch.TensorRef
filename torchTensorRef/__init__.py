@@ -678,7 +678,7 @@ def noisy_importer(
         if name in excludeFromInjection:
             moduleExcludeStack += 1
 
-        if moduleExcludeStack > 0:
+        if moduleExcludeStack <= 0:
             if firstWrapping:
                 importToWrap.append(res)
             else:
