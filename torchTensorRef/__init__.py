@@ -80,15 +80,8 @@ def endsWith(str, arr):
 
 methodStack = Stack()
 
-def is_static_method(cls, method_name):
-    """Check if a method name corresponds to a static method of the given class."""
-    # Check if the method_name is in the class dictionary
-    if method_name in cls.__dict__:
-        # Get the actual attribute associated with the method name
-        attr = cls.__dict__[method_name]
-        # Check if this attribute is a staticmethod
-        return isinstance(attr, staticmethod)
-    return False
+def is_static_method(func):
+    return isinstance(func, staticmethod)
 
 itsMe = []
 origFunctions = {}
