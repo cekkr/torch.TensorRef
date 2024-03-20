@@ -114,7 +114,7 @@ def method_wrapper(func):
         def funWrapper(*args, **kwargs):
 
             global methodStack
-            
+
             if methodStack.get('asYouAre') is True:
                 return func(*args, **kwargs)
 
@@ -174,6 +174,7 @@ def method_wrapper(func):
                 moveToAccelerator = False
 
             def runFunc():
+                global isStaticFunction
                 if isStaticFunction:
                     self, *args = args
                     return func(*args, *kwargs)
