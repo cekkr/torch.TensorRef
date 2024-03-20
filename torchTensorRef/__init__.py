@@ -80,6 +80,9 @@ def endsWith(str, arr):
 
 methodStack = Stack()
 
+def is_static_method(method):
+    return inspect.ismethod(method) and method.__self__ is None
+
 itsMe = []
 origFunctions = {}
 
@@ -90,6 +93,8 @@ def method_wrapper(func):
 
     if VERBOSE_HOOK:
         print("hooking function " + name)
+
+    isStaticMethod = is_static_method(func)
 
     origFunctions[name] = func
 
@@ -119,6 +124,9 @@ def method_wrapper(func):
 
             if VERBOSE_HOOK:
                 print('Fun Hook: ', name + ' \t', methodStack.level)
+
+            if isStaticMethod:
+                self, *args = args
 
             maxStackLevel = 5
             tensorsBackToCPU = True # methodStack.level <= maxStackLevel
