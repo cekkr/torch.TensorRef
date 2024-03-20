@@ -48,6 +48,7 @@ def checkSelf(self):
 ###
 
 injectTo = ['torch']
+excludeFromInjection = ['timm']
 exclude = [
             'torch.fx', 'torch.jit', 'torch.autograd', 'torchgen', 'torch.storage', 'functools', 'torch.utils', 'torch.library', 'torch.cuda',
             #"torch.collections", "torch.tensor",
@@ -79,6 +80,7 @@ methodStack = Stack()
 
 itsMe = []
 origFunctions = {}
+
 def method_wrapper(func):
     name = func.__module__+'.'+func.__name__
     if func in itsMe or startsWith(name, exclude) or not startsWith(name, injectTo):
@@ -377,11 +379,11 @@ def method_wrapper(func):
 
     classWrapper.argsAsRef = passAsRef
     classWrapper.nanChecked = name in ['torch.isnan'] or ignoreNaNChecker
-
+    
     wrapper = classWrapper.funWrapper
 
-    numArgs = IsCompiledFunction(func)
-    if numArgs >= 0:
+    numArgs = -1 # IsCompiledFunction(func) # function disabled
+    if numArgs >= 0: 
         # scala reale
         if numArgs == 0:
             def compiledWrapper():
@@ -561,6 +563,8 @@ def flushWrap():
     firstWrapping = False
 
 origTensorLike = None
+origModules = {}
+moduleExcludeStack = 0
 
 def noisy_importer(
     name,
@@ -573,6 +577,9 @@ def noisy_importer(
 ):
     global setTensorLikeTo
     global origTensorLike
+    global origModules
+    global moduleExcludeStack
+    global excludeFromInjection
 
     if defaultImport is None:
         defaultImport = old_import
@@ -667,10 +674,18 @@ def noisy_importer(
 
     if (startsWith(name, injectTo) or (name.startswith('.') and inside != None and startsWith(inside, injectTo))) and not startsWith(name, exclude):
         res = defaultImport(name, locals, globals, fromlist, level)
-        if firstWrapping:
-            importToWrap.append(res)
-        else:
-            res = wrapModule(res)
+
+        if name in excludeFromInjection:
+            moduleExcludeStack += 1
+
+        if moduleExcludeStack > 0:
+            if firstWrapping:
+                importToWrap.append(res)
+            else:
+                res = wrapModule(res)
+
+        if name in excludeFromInjection:
+            moduleExcludeStack -= 1
 
         #if '__alreadyOnWrap' not in res.__dict__:
         #    res.__dict__['__alreadyOnWrap'] = True
