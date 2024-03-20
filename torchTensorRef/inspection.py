@@ -34,10 +34,10 @@ def find_arg_count(func):
     return arg_count
 
 
-def IsCompiledFunction(func):
+def GetNumArgs(func):
     # Check if the function is a compiled (built-in) function
-    if not isinstance(func, types.BuiltinFunctionType):
-        return -1
+    #if not isinstance(func, types.BuiltinFunctionType):
+    #    return -1
     
     # Attempt to retrieve the function's signature
     try:

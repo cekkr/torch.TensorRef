@@ -11,7 +11,7 @@ import time
 from .hook import Hooks
 from .common import VERBOSE_HOOK, properties
 from .basic import Stack
-from .inspection import IsCompiledFunction
+from .inspection import GetNumArgs
 
 torch = None
 TensorRef = None
@@ -382,7 +382,7 @@ def method_wrapper(func):
     
     wrapper = classWrapper.funWrapper
 
-    numArgs = -1 # IsCompiledFunction(func) # function disabled
+    numArgs = GetNumArgs(func) # function disabled
     if numArgs >= 0: 
         # scala reale
         if numArgs == 0:
@@ -672,29 +672,35 @@ def noisy_importer(
     #if name.startswith('torch.nn'):
     #    print("check")
 
-    if (startsWith(name, injectTo) or (name.startswith('.') and inside != None and startsWith(inside, injectTo))) and not startsWith(name, exclude):
-        res = defaultImport(name, locals, globals, fromlist, level)
-
-        if startsWith(name, excludeFromInjection):
+    #todo: clone the hooked module to provide original one when needed
+    if startsWith(name, excludeFromInjection):
             moduleExcludeStack += 1
 
-        if moduleExcludeStack <= 0:
+    if moduleExcludeStack <= 0:
+        if (startsWith(name, injectTo) or (name.startswith('.') and inside != None and startsWith(inside, injectTo))) and not startsWith(name, exclude):
+            res = defaultImport(name, locals, globals, fromlist, level)
+
+            if startsWith(name, excludeFromInjection):
+                moduleExcludeStack += 1
+
             if firstWrapping:
                 importToWrap.append(res)
             else:
                 res = wrapModule(res)
-
-        if name in excludeFromInjection:
-            moduleExcludeStack -= 1
-
-        #if '__alreadyOnWrap' not in res.__dict__:
-        #    res.__dict__['__alreadyOnWrap'] = True
-        #    res = wrapModule(res)
+            
+            #if '__alreadyOnWrap' not in res.__dict__:
+            #    res.__dict__['__alreadyOnWrap'] = True
+            #    res = wrapModule(res)
+        else:
+            try:
+                res = defaultImport(name, locals, globals, fromlist, level)
+            except Exception as err:
+                raise err
     else:
-        try:
-            res = defaultImport(name, locals, globals, fromlist, level)
-        except Exception as err:
-            raise err
+        res = defaultImport(name, locals, globals, fromlist, level)
+
+    if name in excludeFromInjection:
+        moduleExcludeStack -= 1
 
 
     '''
