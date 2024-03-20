@@ -91,7 +91,6 @@ def method_wrapper(func):
     if VERBOSE_HOOK:
         print("hooking function " + name)
 
-    isStaticFunction = False
     origFunctions[name] = func
 
     passAsRef = name not in ['torch.nn.modules.module._load_from_state_dict'] and not startsWith(name, ['torch.serialization'])
@@ -114,7 +113,6 @@ def method_wrapper(func):
         def funWrapper(*args, **kwargs):
 
             global methodStack
-            global isStaticFunction
 
             if methodStack.get('asYouAre') is True:
                 return func(*args, **kwargs)
@@ -175,8 +173,7 @@ def method_wrapper(func):
                 moveToAccelerator = False
 
             def runFunc():
-                global isStaticFunction
-                if isStaticFunction:
+                if classWrapper.isStaticFunction:
                     self, *args = args
                     return func(*args, *kwargs)
                 else:
@@ -185,7 +182,7 @@ def method_wrapper(func):
                     except Exception as err:
                         se = str(err)
                         if 'positional argument' in se and 'but' in se and 'given' in se:
-                            isStaticFunction = True 
+                            classWrapper.isStaticFunction = True 
                             return runFunc()
                         else:
                             raise err
@@ -399,7 +396,8 @@ def method_wrapper(func):
 
     classWrapper.argsAsRef = passAsRef
     classWrapper.nanChecked = name in ['torch.isnan'] or ignoreNaNChecker
-    
+    classWrapper.isStaticFunction = False 
+
     wrapper = classWrapper.funWrapper
 
     numArgs = -1 # GetNumArgs(func) # function disabled
