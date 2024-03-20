@@ -7,6 +7,7 @@ import inspect
 import types
 import typing
 import time
+import copy
 
 from .hook import Hooks
 from .common import VERBOSE_HOOK, properties
@@ -382,7 +383,7 @@ def method_wrapper(func):
     
     wrapper = classWrapper.funWrapper
 
-    numArgs = GetNumArgs(func) # function disabled
+    numArgs = 1 # GetNumArgs(func) # function disabled
     if numArgs >= 0: 
         # scala reale
         if numArgs == 0:
@@ -455,6 +456,8 @@ cachedModules = {}
 def wrapModule(mod):
     if startsWith(mod.__name__, exclude):
         return mod
+    
+    mod = copy.copy(mod)
 
     wrappedVars = 0
     try:
@@ -678,7 +681,7 @@ def noisy_importer(
 
     if moduleExcludeStack <= 0:
         if (startsWith(name, injectTo) or (name.startswith('.') and inside != None and startsWith(inside, injectTo))) and not startsWith(name, exclude):
-            res = defaultImport(name, locals, globals, fromlist, level)
+            orig = res = defaultImport(name, locals, globals, fromlist, level)
 
             if startsWith(name, excludeFromInjection):
                 moduleExcludeStack += 1
@@ -687,6 +690,7 @@ def noisy_importer(
                 importToWrap.append(res)
             else:
                 res = wrapModule(res)
+                origModules[id(orig)] = res
             
             #if '__alreadyOnWrap' not in res.__dict__:
             #    res.__dict__['__alreadyOnWrap'] = True
@@ -698,6 +702,8 @@ def noisy_importer(
                 raise err
     else:
         res = defaultImport(name, locals, globals, fromlist, level)
+        if id(res) in origModules:
+            res = origModules[id(res)]
 
     if name in excludeFromInjection:
         moduleExcludeStack -= 1
