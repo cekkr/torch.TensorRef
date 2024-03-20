@@ -178,7 +178,7 @@ def method_wrapper(func):
                     return func(*args, *kwargs)
                 else:
                     try:
-                        func(*args, *kwargs)
+                        return func(*args, *kwargs)
                     except Exception as err:
                         se = str(err)
                         if 'positional argument' in se and 'but' in se and 'given' in se:
