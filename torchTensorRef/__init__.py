@@ -8,6 +8,7 @@ import types
 import typing
 import time
 import copy
+import sys
 
 from .hook import Hooks
 from .common import VERBOSE_HOOK, properties
@@ -452,12 +453,21 @@ def method_wrapper(func):
 TensorRef = None
 TorchTensor = None
 
+def shallow_copy_module(original_module):
+    # Create a new module object
+    new_module = types.ModuleType(original_module.__name__)
+    
+    # Copy attributes from the original module to the new module
+    new_module.__dict__.update(original_module.__dict__)
+    
+    return new_module
+
 cachedModules = {}
 def wrapModule(mod):
     if startsWith(mod.__name__, exclude):
         return mod
     
-    mod = copy.copy(mod)
+    mod = shallow_copy_module(mod)
 
     wrappedVars = 0
     try:
