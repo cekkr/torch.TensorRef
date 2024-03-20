@@ -84,6 +84,9 @@ def method_wrapper(func):
     if func in itsMe or startsWith(name, exclude) or not startsWith(name, injectTo):
         return func
 
+    if VERBOSE_HOOK:
+        print("hooking function " + name)
+
     origFunctions[name] = func
 
     passAsRef = name not in ['torch.nn.modules.module._load_from_state_dict'] and not startsWith(name, ['torch.serialization'])
