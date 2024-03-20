@@ -11,6 +11,7 @@ import time
 from .hook import Hooks
 from .common import VERBOSE_HOOK, properties
 from .basic import Stack
+from .inspection import IsCompiledFunction
 
 torch = None
 TensorRef = None
@@ -373,7 +374,56 @@ def method_wrapper(func):
 
     classWrapper.argsAsRef = passAsRef
     classWrapper.nanChecked = name in ['torch.isnan'] or ignoreNaNChecker
+
     wrapper = classWrapper.funWrapper
+
+    numArgs = IsCompiledFunction(func)
+    if numArgs >= 0:
+        # scala reale
+        if numArgs == 0:
+            def compiledWrapper():
+                wrapper()
+            return compiledWrapper
+        elif numArgs == 1:
+            def compiledWrapper(a0):
+                wrapper(a0)
+            return compiledWrapper   
+        elif numArgs == 2:
+            def compiledWrapper(a0, a1):
+                wrapper(a0, a1)
+            return compiledWrapper   
+        elif numArgs == 3:
+            def compiledWrapper(a0, a1, a2):
+                wrapper(a0, a1, a2)
+            return compiledWrapper   
+        elif numArgs == 4:
+            def compiledWrapper(a0, a1, a2, a3):
+                wrapper(a0, a1, a2, a3)
+            return compiledWrapper   
+        elif numArgs == 5:
+            def compiledWrapper(a0, a1, a2, a3, a4):
+                wrapper(a0, a1, a2, a3, a4)
+            return compiledWrapper   
+        elif numArgs == 6:
+            def compiledWrapper(a0, a1, a2, a3, a4, a5):
+                wrapper(a0, a1, a2, a3, a4, a5)
+            return compiledWrapper   
+        elif numArgs == 7:
+            def compiledWrapper(a0, a1, a2, a3, a4, a5, a6):
+                wrapper(a0, a1, a2, a3, a4, a5, a6)
+            return compiledWrapper   
+        elif numArgs == 8:
+            def compiledWrapper(a0, a1, a2, a3, a4, a5, a6, a7):
+                wrapper(a0, a1, a2, a3, a4, a5, a6, a7,)
+            return compiledWrapper   
+        elif numArgs == 9:
+            def compiledWrapper(a0, a1, a2, a3, a4, a5, a6, a7, a8):
+                wrapper(a0, a1, a2, a3, a4, a5, a6, a7, a8)
+            return compiledWrapper   
+        elif numArgs == 10:
+            def compiledWrapper(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9):
+                wrapper(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9)
+            return compiledWrapper   
 
     try:
         wrapModule(func)
