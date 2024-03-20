@@ -114,6 +114,7 @@ def method_wrapper(func):
         def funWrapper(*args, **kwargs):
 
             global methodStack
+            global isStaticFunction
 
             if methodStack.get('asYouAre') is True:
                 return func(*args, **kwargs)
