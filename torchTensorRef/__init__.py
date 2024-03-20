@@ -384,7 +384,7 @@ def method_wrapper(func):
     
     wrapper = classWrapper.funWrapper
 
-    numArgs = 1 # GetNumArgs(func) # function disabled
+    numArgs = -1 # GetNumArgs(func) # function disabled
     if numArgs >= 0: 
         # scala reale
         if numArgs == 0:
@@ -454,6 +454,9 @@ TensorRef = None
 TorchTensor = None
 
 def shallow_copy_module(original_module):
+    if isinstance(original_module, (types.FunctionType, type)):
+        return copy.copy(original_module)
+
     # Create a new module object
     new_module = types.ModuleType(original_module.__name__)
     
@@ -466,16 +469,23 @@ cachedModules = {}
 def wrapModule(mod):
     if startsWith(mod.__name__, exclude):
         return mod
-    
-    mod = shallow_copy_module(mod)
+
+    orig = mod
+    vars = dir(mod)
 
     wrappedVars = 0
-    try:
-        wrappedVars = mod.__dict__['__wrapped']
-    except:
-        pass
+    idMod = id(mod)
+    if idMod in cachedModules:
+        mod = cachedModules[idMod]
+        try:
+            wrappedVars = mod.__dict__['__wrapped']
+        except:
+            pass
 
-    vars = dir(mod)
+        if wrappedVars == len(vars):
+            return mod
+    else:
+        mod = cachedModules[idMod] = shallow_copy_module(mod)
 
     try:
         mod.__dict__['__wrapped'] = len(vars)
@@ -489,12 +499,7 @@ def wrapModule(mod):
         pass
 
     name += mod.__name__
-
-    if wrappedVars == len(vars):
-        try:
-            return cachedModules[name]
-        except:
-            pass
+    #####
 
     def trySet(name, attr):
         try:
@@ -555,28 +560,39 @@ def wrapModule(mod):
         except Exception as err:
             ignore = True
 
-    cachedModules[name] = mod
     return mod
 
 
 old_import = __import__
 
 importCache = {}
-importToWrap = []
+importToWrap = {}
+modulesToWrap = []
 firstWrapping = True
 
 setTensorLikeTo = None
 
+# it doesn't work anymore
 def flushWrap():
     global importToWrap
+    global modulesToWrap
     global firstWrapping
-    for mod in importToWrap:
-        wrapModule(mod)
-    importToWrap = []
+
+    module2Wrap = {}
+    for mod in modulesToWrap:
+        module2Wrap[id(mod)] = wrapModule(mod)
+
+    for idLocals, local in importToWrap.items():
+        for mid, mod in module2Wrap.items():
+            for name, val in local.items():
+                if(id(val) == mid):
+                    local[name] = mod
+
+    importToWrap = {}
     firstWrapping = False
 
 origTensorLike = None
-origModules = {}
+#origModules = {}
 moduleExcludeStack = 0
 
 def noisy_importer(
@@ -590,9 +606,11 @@ def noisy_importer(
 ):
     global setTensorLikeTo
     global origTensorLike
-    global origModules
+    #global origModules
     global moduleExcludeStack
     global excludeFromInjection
+    global modulesToWrap
+    global importToWrap
 
     if defaultImport is None:
         defaultImport = old_import
@@ -693,14 +711,14 @@ def noisy_importer(
         if (startsWith(name, injectTo) or (name.startswith('.') and inside != None and startsWith(inside, injectTo))) and not startsWith(name, exclude):
             orig = res = defaultImport(name, locals, globals, fromlist, level)
 
-            if startsWith(name, excludeFromInjection):
-                moduleExcludeStack += 1
-
             if firstWrapping:
-                importToWrap.append(res)
+                idLocals = id(locals)
+                if idLocals not in importToWrap:
+                    importToWrap[idLocals] = locals
+                if res not in modulesToWrap:
+                    modulesToWrap.append(res)
             else:
                 res = wrapModule(res)
-                origModules[id(orig)] = res
             
             #if '__alreadyOnWrap' not in res.__dict__:
             #    res.__dict__['__alreadyOnWrap'] = True
@@ -712,8 +730,6 @@ def noisy_importer(
                 raise err
     else:
         res = defaultImport(name, locals, globals, fromlist, level)
-        if id(res) in origModules:
-            res = origModules[id(res)]
 
     if name in excludeFromInjection:
         moduleExcludeStack -= 1
