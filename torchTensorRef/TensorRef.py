@@ -117,10 +117,10 @@ class TensorRef(ABC, TensorRefBase):
         # Delegate attribute access to the target object
         attr = getattr(self.target, name)
 
-        if name == "to": # back to the normal behavior
+        if name == "to": 
             return getattr(self.target, name)
 
-            # Behaviour disable (also in detach)
+            # Behaviour disabled (also in detach)
             def ignore(*args, **kwargs):
                 dev = None
 
