@@ -117,7 +117,7 @@ class TensorRef(ABC, TensorRefBase):
         # Delegate attribute access to the target object
         attr = getattr(self.target, name)
 
-        if name == "to":
+        if name == "to" and False: # back to the normal behavior
 
             def ignore(*args, **kwargs):
                 dev = None
@@ -153,7 +153,7 @@ class TensorRef(ABC, TensorRefBase):
 
                 # improve this: don't move on GPU if the operation isn't related
                 accelerate = False
-                if not name.endswith('_') and name not in ['set_', 'numpy', 'detach']:
+                if name not in ['numpy', 'detach']: # 'set_' and not name.endswith('_') 
                     accelerate = True
                     self.toGPU()
                     self.proxyInfo.locked = True
