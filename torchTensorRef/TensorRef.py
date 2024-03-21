@@ -154,6 +154,7 @@ class TensorRef(ABC, TensorRefBase):
                     print(f"Calling {name}")
 
                 # improve this: don't move on GPU if the operation isn't related
+                #todo: in case of set_ check the device of the TensorStorage and move the tensor to the right device
                 accelerate = False
                 if name not in ['numpy', 'detach']: # 'set_' and not name.endswith('_') 
                     accelerate = True
