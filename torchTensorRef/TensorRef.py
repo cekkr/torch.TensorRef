@@ -120,7 +120,7 @@ class TensorRef(ABC, TensorRefBase):
         if name == "to": # back to the normal behavior
             return getattr(self.target, name)
 
-            # Behaviour disable (also in detach)
+            # Behaviour disabled (also in detach)
             def ignore(*args, **kwargs):
                 dev = None
 
