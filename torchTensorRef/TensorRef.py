@@ -117,8 +117,10 @@ class TensorRef(ABC, TensorRefBase):
         # Delegate attribute access to the target object
         attr = getattr(self.target, name)
 
-        if name == "to" and False: # back to the normal behavior
+        if name == "to": # back to the normal behavior
+            return getattr(self.target, name)
 
+            # Behaviour disable (also in detach)
             def ignore(*args, **kwargs):
                 dev = None
 
@@ -137,7 +139,7 @@ class TensorRef(ABC, TensorRefBase):
         if attr is None:
             if name == 'detach':
                 def setCpuAsFavouriteDev():
-                    self.proxyInfo.device = 'cpu'
+                    #self.proxyInfo.device = 'cpu'
                     return self.toCPU()
                 return setCpuAsFavouriteDev
 
@@ -270,7 +272,7 @@ class TensorRef(ABC, TensorRefBase):
 
                     oldTarget = self.target
                     tensorRefsTracker.uncountTensor(self)
-                   
+                    
                     res = oldTarget.to(device=dev, dtype=dt)
 
                     if isinstance(oldTarget, torch.nn.Parameter) and not isinstance(res, torch.nn.Parameter):
