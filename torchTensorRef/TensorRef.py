@@ -86,6 +86,9 @@ def levelTensorsArgs(args, kwargs, opts={}):
 class TensorRef(ABC, TensorRefBase):
 
     def __init__(self, target, tensorsManager):
+        if torch.cuda.is_available():
+            target.pin_memory()
+
         setattr(self, "target", target)
         setattr(self, "proxyInfo", ProxyInfo())
         self.proxyInfo.tensorsManager = tensorsManager
